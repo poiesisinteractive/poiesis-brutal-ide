@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Modèle de l'éditeur, sans UI : document de scène, sélection, annuler/rétablir, Play/Stop, hot reload.
+       Testable sans fenêtre ni GPU. L'UI ImGui (Poiesis.Editor) n'est qu'une vue de ce modèle. -->
+  <PropertyGroup>
+    <RootNamespace>Poiesis.Editor</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Poiesis.Engine.Hosting\Poiesis.Engine.Hosting.csproj" />
+    <ProjectReference Include="..\Poiesis.AI\Poiesis.AI.csproj" />
+  </ItemGroup>
+
+</Project>

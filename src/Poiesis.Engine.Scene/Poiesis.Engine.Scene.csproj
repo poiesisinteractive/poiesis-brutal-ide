@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Contenu créé dans l'éditeur : arbre de nœuds, sérialisation JSON, cuisson des nœuds en entités ECS,
+       et contrat des modules de jeu rechargés à chaud. -->
+  <PropertyGroup>
+    <RootNamespace>Poiesis.Engine.Scene</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Poiesis.Engine.Core\Poiesis.Engine.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Poiesis.Engine.Tests" />
+  </ItemGroup>
+
+</Project>

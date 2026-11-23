@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Génération de code par IA, centrée sur la feature : fournisseurs de modèles, boucle d'agent, outils,
+       et workflow feature (branche, gardes-fous, diff). Ne dépend ni de l'éditeur ni du moteur. -->
+  <PropertyGroup>
+    <RootNamespace>Poiesis.AI</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Anthropic" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Poiesis.AI.Tests" />
+  </ItemGroup>
+
+</Project>

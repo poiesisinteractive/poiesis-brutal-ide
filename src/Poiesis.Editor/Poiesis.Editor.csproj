@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- L'IDE : fenêtre GLFW, viewport Vulkan, interface Dear ImGui (branche docking). -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Poiesis.Editor</RootNamespace>
+    <ServerGarbageCollection>false</ServerGarbageCollection>
+    <TieredPGO>true</TieredPGO>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Poiesis.Editor.Core\Poiesis.Editor.Core.csproj" />
+    <ProjectReference Include="..\Poiesis.Render\Poiesis.Render.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Ahwoo.Brutal.Glfw" />
+    <PackageReference Include="Ahwoo.Brutal.ImGui" />
+    <PackageReference Include="Ahwoo.Brutal.ImGui.Backends" />
+    <PackageReference Include="Ahwoo.Brutal.ImGui.Extensions" />
+    <PackageReference Include="Ahwoo.Brutal.ImGui.FreeType" />
+    <PackageReference Include="Ahwoo.Brutal.NativeFileDialog" />
+  </ItemGroup>
+
+</Project>

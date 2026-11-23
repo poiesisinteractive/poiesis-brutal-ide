@@ -1,0 +1,9 @@
+{
+  "id": "clans.cruiser",
+  "displayName": "Mastodonte",
+  "lengthMeters": 650,
+  "hull": 14000,
+  "cruiseSpeed": 800,
+  "weaponRange": 18000,
+  "weaponDps": 130
+}

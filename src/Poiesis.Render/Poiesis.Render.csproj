@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Rendu Vulkan 1.3 (BRUTAL : Vulkan, Vulkan.Abstractions, VMA, ShaderC). Jalon 1 : le contrat est posé,
+       le backend Vulkan s'écrit en premier (voir docs/ROADMAP.md). -->
+  <PropertyGroup>
+    <RootNamespace>Poiesis.Render</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Poiesis.Engine.Core\Poiesis.Engine.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Ahwoo.Brutal.Vulkan" />
+    <PackageReference Include="Ahwoo.Brutal.Vulkan.Abstractions" />
+    <PackageReference Include="Ahwoo.Brutal.Vulkan.Vma" />
+    <PackageReference Include="Ahwoo.Brutal.ShaderC" />
+    <PackageReference Include="Ahwoo.Brutal.Glfw" />
+  </ItemGroup>
+
+</Project>

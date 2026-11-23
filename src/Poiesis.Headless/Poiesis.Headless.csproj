@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Runner headless : charge le module d'un jeu, joue une scène à pas fixe sans fenêtre, écrit ses métriques en JSON.
+       Sert au dev, aux tests d'équilibrage, et de garde-fou à l'agent IA. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Poiesis.Headless</RootNamespace>
+    <ServerGarbageCollection>false</ServerGarbageCollection>
+    <TieredPGO>true</TieredPGO>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Poiesis.Engine.Hosting\Poiesis.Engine.Hosting.csproj" />
+  </ItemGroup>
+
+</Project>

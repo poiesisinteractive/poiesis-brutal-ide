@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Gameplay d'Orionum : chargé à chaud par l'éditeur. Écrit à la main ou par l'agent IA. -->
+  <PropertyGroup>
+    <RootNamespace>Orionum.Game</RootNamespace>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Le moteur est fourni par l'hôte (éditeur ou headless) : on ne le copie pas à côté du jeu. -->
+    <ProjectReference Include="..\..\..\..\src\Poiesis.Engine.Scene\Poiesis.Engine.Scene.csproj">
+      <Private>false</Private>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </ProjectReference>
+  </ItemGroup>
+
+</Project>

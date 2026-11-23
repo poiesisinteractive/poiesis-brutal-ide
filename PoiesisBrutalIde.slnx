@@ -1,0 +1,24 @@
+<Solution>
+  <Folder Name="/games/" />
+  <Folder Name="/games/Orionum/" />
+  <Folder Name="/games/Orionum/src/">
+    <Project Path="games/Orionum/src/Orionum.Game/Orionum.Game.csproj" />
+  </Folder>
+  <Folder Name="/games/Orionum/tests/">
+    <Project Path="games/Orionum/tests/Orionum.Game.Tests/Orionum.Game.Tests.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/Poiesis.AI/Poiesis.AI.csproj" />
+    <Project Path="src/Poiesis.Editor.Core/Poiesis.Editor.Core.csproj" />
+    <Project Path="src/Poiesis.Editor/Poiesis.Editor.csproj" />
+    <Project Path="src/Poiesis.Engine.Core/Poiesis.Engine.Core.csproj" />
+    <Project Path="src/Poiesis.Engine.Hosting/Poiesis.Engine.Hosting.csproj" />
+    <Project Path="src/Poiesis.Engine.Scene/Poiesis.Engine.Scene.csproj" />
+    <Project Path="src/Poiesis.Headless/Poiesis.Headless.csproj" />
+    <Project Path="src/Poiesis.Render/Poiesis.Render.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Poiesis.AI.Tests/Poiesis.AI.Tests.csproj" />
+    <Project Path="tests/Poiesis.Engine.Tests/Poiesis.Engine.Tests.csproj" />
+  </Folder>
+</Solution>

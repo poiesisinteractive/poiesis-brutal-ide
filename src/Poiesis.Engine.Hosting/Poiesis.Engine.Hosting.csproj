@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Hébergement d'un jeu : chargement et rechargement à chaud de son assembly, session de sim (Play, Stop, pas fixe). -->
+  <PropertyGroup>
+    <RootNamespace>Poiesis.Engine.Hosting</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Poiesis.Engine.Core\Poiesis.Engine.Core.csproj" />
+    <ProjectReference Include="..\Poiesis.Engine.Scene\Poiesis.Engine.Scene.csproj" />
+  </ItemGroup>
+
+</Project>

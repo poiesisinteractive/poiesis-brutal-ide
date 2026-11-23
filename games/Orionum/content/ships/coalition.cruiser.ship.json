@@ -1,0 +1,9 @@
+{
+  "id": "coalition.cruiser",
+  "displayName": "Croiseur Bastion",
+  "lengthMeters": 600,
+  "hull": 12000,
+  "cruiseSpeed": 900,
+  "weaponRange": 20000,
+  "weaponDps": 140
+}

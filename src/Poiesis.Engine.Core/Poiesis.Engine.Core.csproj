@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Runtime pur : ECS, systèmes, pas de temps fixe. Aucune dépendance au rendu ni à l'éditeur. -->
+  <PropertyGroup>
+    <RootNamespace>Poiesis.Engine</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Ahwoo.Brutal.Core" />
+    <PackageReference Include="Ahwoo.Brutal.Numerics" />
+    <PackageReference Include="Ahwoo.Brutal.Concurrency" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Poiesis.Engine.Tests" />
+  </ItemGroup>
+
+</Project>

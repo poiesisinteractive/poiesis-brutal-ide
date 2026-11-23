@@ -1,0 +1,103 @@
+using System.Reflection;
+using Poiesis.Engine.Scene;
+
+namespace Poiesis.Editor;
+
+/// <summary>Une modification annulable du document. Tout changement fait dans l'éditeur passe par une commande.</summary>
+public interface IEditorCommand
+{
+    string Label { get; }
+    void Do();
+    void Undo();
+}
+
+public sealed class SetPropertyCommand(Node node, PropertyInfo property, object? newValue) : IEditorCommand
+{
+    readonly object? _oldValue = property.GetValue(node);
+
+    public string Label => $"Modifier {node.Name}.{property.Name}";
+
+    public void Do() => property.SetValue(node, newValue);
+
+    public void Undo() => property.SetValue(node, _oldValue);
+}
+
+public sealed class RenameCommand(Node node, string newName) : IEditorCommand
+{
+    readonly string _oldName = node.Name;
+
+    public string Label => $"Renommer {_oldName}";
+
+    public void Do() => node.Name = newName;
+
+    public void Undo() => node.Name = _oldName;
+}
+
+public sealed class AddNodeCommand(Node parent, Node child) : IEditorCommand
+{
+    public string Label => $"Ajouter {child.Name}";
+
+    public void Do() => parent.AddChild(child);
+
+    public void Undo() => parent.RemoveChild(child);
+}
+
+public sealed class RemoveNodeCommand(Node node) : IEditorCommand
+{
+    readonly Node _parent = node.Parent ?? throw new InvalidOperationException("On ne supprime pas la racine");
+
+    public string Label => $"Supprimer {node.Name}";
+
+    public void Do() => _parent.RemoveChild(node);
+
+    // Simplification du squelette : le nœud revient en dernière position parmi ses frères.
+    public void Undo() => _parent.AddChild(node);
+}
+
+public sealed class UndoStack
+{
+    readonly Stack<IEditorCommand> _undo = new();
+    readonly Stack<IEditorCommand> _redo = new();
+
+    public event Action? Changed;
+
+    public bool CanUndo => _undo.Count > 0;
+    public bool CanRedo => _redo.Count > 0;
+    public string? NextUndo => _undo.TryPeek(out var c) ? c.Label : null;
+    public string? NextRedo => _redo.TryPeek(out var c) ? c.Label : null;
+
+    public void Execute(IEditorCommand command)
+    {
+        command.Do();
+        _undo.Push(command);
+        _redo.Clear();
+        Changed?.Invoke();
+    }
+
+    public void Undo()
+    {
+        if (_undo.TryPop(out var c))
+        {
+            c.Undo();
+            _redo.Push(c);
+            Changed?.Invoke();
+        }
+    }
+
+    public void Redo()
+    {
+        if (_redo.TryPop(out var c))
+        {
+            c.Do();
+            _undo.Push(c);
+            Changed?.Invoke();
+        }
+    }
+
+    public void Clear()
+    {
+        _undo.Clear();
+        _redo.Clear();
+        Changed?.Invoke();
+    }
+}
