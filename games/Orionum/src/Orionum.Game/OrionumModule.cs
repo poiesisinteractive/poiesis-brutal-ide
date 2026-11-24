@@ -4,7 +4,7 @@ using Poiesis.Engine.Scene;
 
 namespace Orionum.Game;
 
-public sealed class OrionumModule : IGameModule, IWorldVisualizer, IGameReporter
+public sealed class OrionumModule : IGameModule, IWorldVisualizer, IGameReporter, IGameHud
 {
     Catalog _catalog = new();
     readonly Visuals _visuals = new();
@@ -17,6 +17,7 @@ public sealed class OrionumModule : IGameModule, IWorldVisualizer, IGameReporter
     {
         world.SetResource(_catalog);
         world.SetResource(_catalog.Meshes);
+        world.SetResource(new Poiesis.Engine.Audio.SoundEvents());
         world.SetResource(new Battle());
     }
 
@@ -37,4 +38,6 @@ public sealed class OrionumModule : IGameModule, IWorldVisualizer, IGameReporter
     public void Draw(World world, DrawContext ctx) => _visuals.Draw(world, ctx);
 
     public GameReport Report(World world) => BattleReport.Build(world);
+
+    public void DrawHud(World world, HudContext ctx) => Hud.Draw(world, ctx);
 }

@@ -1,3 +1,4 @@
+using Poiesis.Engine.Audio;
 using Brutal.Numerics;
 using Poiesis.Engine;
 using Poiesis.Engine.Ecs;
@@ -131,14 +132,33 @@ public static class Damage
         float onShield = (hit.Amount - pierced) * vsShield;
         float absorbed = MathF.Min(shields[face], onShield);
         shields[face] -= absorbed;
+        var position = world.Store<Transform>().Get(e).Position;
+        var sounds = world.TryResource<SoundEvents>(out var se) ? se : null;
+
+        if (absorbed > 0 && battle.ShieldHits.Count < Battle.MaxImpactFx)
+        {
+            var frame = Frame.FromForward(motion.Forward);
+            battle.ShieldHits.Add(new ShieldHitFx
+            {
+                Ship = hit.Target,
+                LocalDir = new float3(float3.Dot(hit.FromDir, frame.Port), float3.Dot(hit.FromDir, frame.Up), float3.Dot(hit.FromDir, frame.Fwd)),
+                Strength = Math.Clamp(absorbed / MathF.Max(cls.Def.ShieldFace, 1) * 4, 0.25f, 1.5f),
+                Faction = ship.Faction,
+                Life = 0.6f,
+                MaxLife = 0.6f,
+            });
+            sounds?.Play("bouclier", position, MathF.Min(1, 0.3f + absorbed / 2000));
+        }
 
         float overflow = (pierced + (onShield - absorbed) / vsShield) * vsHull;
         if (overflow <= 0)
             return;
         ship.Hull -= overflow;
 
-        var position = world.Store<Transform>().Get(e).Position;
         var at = ImpactPoint(cls.Def, position, motion.Forward, hit.FromDir, Rng.Float(battle.Seed, world.Tick, e, hit.Attacker.Index * 31 + 4));
+        if (battle.HullHits.Count < Battle.MaxImpactFx)
+            battle.HullHits.Add(new HullHitFx { Position = at, Size = MathF.Max(15, MathF.Min(overflow / 40, cls.Def.Radius * 0.15f)), Life = 0.4f, MaxLife = 0.4f });
+        sounds?.Play("impact", at, MathF.Min(1, 0.3f + overflow / 3000));
         Wear(world, cls, battle, e, position, motion.Forward, at, overflow);
 
         if (Rng.Float(battle.Seed, world.Tick, e, hit.Attacker.Index * 31 + 5) < Tuning.RandomSubsystemChance)
@@ -202,6 +222,8 @@ public static class Damage
         if (hit.Alive == 0)
             hit.BeamLeft = 0;
         battle.TurretsDestroyed++;
+        if (world.TryResource<SoundEvents>(out var turretSounds))
+            turretSounds.Play("tourelle", Frame.ToWorld(position, forward, def.Hardpoints[bestTurret]));
         battle.Explosions.Add(new ExplosionFx
         {
             Position = Frame.ToWorld(position, forward, def.Hardpoints[bestTurret]),

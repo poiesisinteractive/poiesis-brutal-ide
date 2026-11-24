@@ -12,7 +12,15 @@ BRUTAL fournit l'interop, la mémoire, les maths, les jobs et les bindings natif
 
 ## État
 
-Jalon 4a terminé, 68 tests passent. On peut :
+Jalon 4 terminé, 74 tests passent. Au jalon 4b, la bataille a pris son allure de jeu :
+- **effets** : rendu HDR et bloom en Vulkan, traçantes et halos, impacts de bouclier en hexagones, étincelles sur les coques, explosions ;
+- **son** avec SDL_mixer : chaque tir, impact et explosion joue un cue, placé dans l'espace par rapport à la caméra. Les cues sont synthétisés à partir de banques JSON qu'on règle et qu'on écoute dans le panneau **Sons** de l'éditeur ;
+- **HUD** : horloge, forces des deux camps, fiche du vaisseau choisi (coque, six faces de bouclier, tourelles, sous-systèmes), dans le jeu exporté comme dans l'éditeur pendant le Play ;
+- **menus** du jeu exporté : choix du scénario, pause, options (volumes, bloom), écran de fin avec le bilan.
+
+![Une passe d'armes : traçantes, halos, impacts de bouclier et explosion](docs/images/effects-bloom.png)
+
+Au jalon 4a, on peut :
 - **composer une scène à plusieurs nœuds** : multi-sélection (Ctrl+clic, Maj+glisser pour un rectangle, Ctrl+A), édition groupée dans l'inspecteur, suppression, duplication et copie du groupe ;
 - **transformer** avec trois gizmos (déplacer W, tourner E, échelle R), autour du centre du groupe, dans le repère du monde ou du nœud (L), avec magnétisme sur la grille, par 15° et par 10 % (M, Ctrl l'inverse) ;
 - **disposer** : aligner sur un axe ou sur le cap du dernier sélectionné, répartir à intervalles égaux (Édition > Disposer) ;
@@ -115,6 +123,7 @@ Le dossier passé en argument est un projet de jeu : il contient un `poiesis.pro
 | Aligner, répartir | Édition > Disposer (sur le dernier sélectionné) |
 | Caméras enregistrées | Ctrl+1 à 9 pour enregistrer, 1 à 9 pour revenir (Affichage > Caméras) |
 | Modifier la scène avec l'IA | panneau IA, onglet Scène : demander, relire le fantôme, cocher, Appliquer |
+| Régler et écouter les sons | panneau Sons (en bas) : choisir la banque et le cue, régler, Écouter, Enregistrer ; « Muet en jeu » |
 
 L'éditeur de code se règle dans `<projet>/.poiesis/settings.json` (VS Code par défaut) :
 
@@ -124,15 +133,21 @@ L'éditeur de code se règle dans `<projet>/.poiesis/settings.json` (VS Code par
 
 ## Jeu exporté
 
-L'export produit un dossier et une archive zip autonomes : le joueur Poiesis, au nom du jeu, avec son runtime .NET, la DLL du jeu, son contenu, `game.json`, le logo et le `NOTICE.txt` de BRUTAL. Rien d'autre à installer qu'un pilote Vulkan.
+L'export produit un dossier et une archive zip autonomes : le joueur Poiesis, au nom du jeu, avec son runtime .NET, la DLL du jeu, son contenu, `game.json`, le logo et le `NOTICE.txt` de BRUTAL. Rien d'autre à installer qu'un pilote Vulkan : SDL3 et SDL3_mixer sont livrés avec.
+
+Il s'ouvre sur un menu : choisir le scénario, régler les options (volumes, bloom, aide), puis jouer. La bataille finie, un écran donne le bilan.
 
 | Action | Commande |
 | --- | --- |
 | Tourner, déplacer, zoomer | glisser, clic droit, molette |
+| Choisir un vaisseau (fiche) | clic ; clic dans le vide pour fermer |
 | Pause, vitesse | Espace, + et − |
 | Tout voir | Origine |
+| Aide à l'écran | H |
 | Crédits | F1 |
-| Quitter | Échap |
+| Menu pause (options, quitter) | Échap |
+
+![Le jeu exporté : menu principal, la bataille en fond](docs/images/player-menu.png)
 
 ![Le jeu exporté, avec les crédits BRUTAL (F1)](docs/images/exported-game.png)
 
@@ -159,7 +174,7 @@ dotnet run --project src/Poiesis.Headless -c Release -- games/Orionum/src/Orionu
 
 ### Vérifier l'éditeur sans écran
 
-L'éditeur tourne aussi sans GPU, avec le Vulkan logiciel de Mesa (lavapipe), et sans écran, sous Xvfb. C'est ainsi qu'il est vérifié dans le cloud et qu'il pourra l'être en CI. `--capture` enregistre une image puis quitte. `--do` joue un petit script : `select:<nom>`, `frame`, `play`, `pause`, `step:<n>`, `advance:<secondes>`, `snapshot`, `restore`, `entity:<slot ou nom de flotte>`, `channel:<canal>`, `about`, `build`, `wait:<images>`, `focus:<panneau>`, `open:<scène>`, `save`, `copy`, `paste`, `instantiate:<scène>`, `move:<de>><vers>`, `set:<Propriété>=<json>`, `tool:<commande>`, `grid`, `content-select:<chemin>`, `feature:<titre>|<description>`, `wait-review`, `accept`, `select-all`, `mode:<move|rotate|scale>`, `local`, `snap`, `align:<x|y|z>`, `distribute:<x|y|z>`, `camera-save:<n>`, `camera:<n>`, `scene-ask:<demande>`, `wait-scene`, `scene-apply`, `scene-reject`, `capture:<png>`, `exit`, `tests[:filtre]`, `open-first-location`, `export:<windows|linux>`, `series:<n>`, `provider:<nom>`, `ask:<question>`.
+L'éditeur tourne aussi sans GPU, avec le Vulkan logiciel de Mesa (lavapipe), et sans écran, sous Xvfb. C'est ainsi qu'il est vérifié dans le cloud et qu'il pourra l'être en CI. `--capture` enregistre une image puis quitte. `--do` joue un petit script : `select:<nom>`, `frame`, `play`, `pause`, `step:<n>`, `advance:<secondes>`, `snapshot`, `restore`, `entity:<slot ou nom de flotte>`, `channel:<canal>`, `about`, `build`, `wait:<images>`, `focus:<panneau>`, `open:<scène>`, `save`, `copy`, `paste`, `instantiate:<scène>`, `move:<de>><vers>`, `set:<Propriété>=<json>`, `tool:<commande>`, `grid`, `content-select:<chemin>`, `feature:<titre>|<description>`, `wait-review`, `accept`, `select-all`, `mode:<move|rotate|scale>`, `local`, `snap`, `align:<x|y|z>`, `distribute:<x|y|z>`, `camera-save:<n>`, `camera:<n>`, `scene-ask:<demande>`, `wait-scene`, `scene-apply`, `scene-reject`, `sound:<cue>`, `zoom:<facteur>`, `capture:<png>`, `exit`, `tests[:filtre]`, `open-first-location`, `export:<windows|linux>`, `series:<n>`, `provider:<nom>`, `ask:<question>`.
 
 ```sh
 sudo apt-get install -y xvfb mesa-vulkan-drivers libvulkan1

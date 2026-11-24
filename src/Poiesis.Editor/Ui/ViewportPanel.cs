@@ -618,6 +618,11 @@ sealed class ViewportPanel
         }
     }
 
+    public Poiesis.Engine.Audio.Listener Listener() => _view.Listener();
+
+    /// <summary>Rapproche (facteur &lt; 1) ou éloigne la caméra (scripts).</summary>
+    public void ZoomBy(float factor) => _view.Distance = Math.Clamp(_view.Distance * factor, 20f, 5_000_000f);
+
     public void FrameSelection()
     {
         _framedOnce = true;
@@ -672,6 +677,30 @@ sealed class ViewportPanel
         dl.AddText(pos + new float2(0, 18), Widgets.Col(EditorTheme.Muted),
             $"{world?.EntityCount ?? 0} entités · grille {WorldView.FormatDistance(GridStep)} · caméra à {WorldView.FormatDistance(_view.Distance)}");
         _view.DrawOverlay(dl, pos + new float2(0, 40));
+
+        // Le HUD du jeu, en partie : le même que dans le jeu exporté.
+        if (_session.Play is { } play && _session.Modules.Module is IGameHud hud)
+        {
+            var ctx = new HudContext
+            {
+                Min = _view.ImageMin,
+                Size = _view.ImageSize,
+                Project = p => _view.Project(p, out var s) ? _view.ImageMin + s : null,
+                SelectedEntity = _session.SelectedEntity,
+                Time = play.Time,
+                TimeScale = (float)play.Clock.TimeScale,
+                InEditor = true,
+            };
+            try
+            {
+                hud.DrawHud(play.World, ctx);
+                _session.SelectedEntity = ctx.SelectedEntity;
+            }
+            catch (Exception ex)
+            {
+                dl.AddText(_view.ImageMin + new float2(10, _view.ImageSize.Y - 48), Widgets.Col(EditorTheme.Error), $"HUD du jeu : {ex.Message}");
+            }
+        }
 
         var bottom = _view.ImageMin + new float2(10, _view.ImageSize.Y - 26);
         if (_session.Plan is { } plan && _session.Play is null)

@@ -58,3 +58,34 @@ public interface IGameReporter
 {
     GameReport Report(World world);
 }
+
+/// <summary>
+/// Ce que l'hôte (joueur, viewport de l'éditeur en partie) donne au HUD du jeu : le rectangle de la vue à l'écran, la
+/// projection d'un point du monde, l'entité sélectionnée (clic), le temps et la vitesse de la partie.
+/// </summary>
+public sealed class HudContext
+{
+    public Brutal.Numerics.float2 Min { get; init; }
+    public Brutal.Numerics.float2 Size { get; init; }
+
+    /// <summary>Position à l'écran (pixels absolus) d'un point du monde, ou <c>null</c> s'il est derrière la caméra.</summary>
+    public required Func<Brutal.Numerics.float3, Brutal.Numerics.float2?> Project { get; init; }
+
+    /// <summary>L'entité choisie au clic (slot), ou -1. Le HUD peut la changer (liste de vaisseaux…).</summary>
+    public int SelectedEntity { get; set; } = -1;
+
+    public double Time { get; init; }
+    public float TimeScale { get; init; }
+
+    /// <summary>Vrai dans le viewport de l'éditeur : le HUD peut se faire plus discret.</summary>
+    public bool InEditor { get; init; }
+}
+
+/// <summary>
+/// Facultatif, implémenté par le module de jeu : le HUD de la partie, dessiné en Dear ImGui (Brutal.ImGuiApi) par-dessus
+/// la vue, dans la fenêtre de l'hôte (liste de dessin de la fenêtre, ou widgets placés dans le rectangle donné).
+/// </summary>
+public interface IGameHud
+{
+    void DrawHud(World world, HudContext ctx);
+}

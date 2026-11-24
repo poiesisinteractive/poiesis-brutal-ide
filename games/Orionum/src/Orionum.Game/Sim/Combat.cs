@@ -1,3 +1,4 @@
+using Poiesis.Engine.Audio;
 using Brutal.Numerics;
 using Poiesis.Engine;
 using Poiesis.Engine.Ecs;
@@ -271,6 +272,15 @@ sealed class WeaponSystem : BattleSystem
         var tvel = battle.SlotVelocity[order.Target.Index];
         var shooter = world.EntityAt(order.Ship);
         float targetRadius = catalog.Classes[ships.Get(order.Target.Index).Class].Def.Radius;
+
+        // Un son par salve (pas par tourelle) : la banque de sons limite les voix.
+        if (world.TryResource<SoundEvents>(out var sounds))
+            sounds.Play(def.BeamDuration > 0 ? "lance" : def.Beam ? "rayon" : def.Kind switch
+            {
+                WeaponKind.Missile => "missile",
+                WeaponKind.Laser => "laser",
+                _ => "canon",
+            }, pos, MathF.Min(1, 0.35f + def.Damage * def.Salvo / 6000));
 
         if (def.BeamDuration > 0)
         {
@@ -565,12 +575,16 @@ sealed class LifecycleSystem : BattleSystem
             ref var s = ref ships.Get(e.Index);
             var radius = catalog.Classes[s.Class].Def.Radius;
             battle.Explosions.Add(new ExplosionFx { Position = battle.SlotPosition[e.Index], Radius = radius * 2.5f, Life = 4, MaxLife = 4 });
+            if (world.TryResource<SoundEvents>(out var deathSounds))
+                deathSounds.Play("explosion", battle.SlotPosition[e.Index], MathF.Min(1, 0.5f + radius / 600));
             battle.Losses[(int)s.Faction]++;
             world.Destroy(e);
         }
 
         battle.CompactProjectiles();
         Age(battle.Beams, dt);
+        AgeShieldHits(battle.ShieldHits, dt);
+        AgeHullHits(battle.HullHits, dt);
         for (int i = battle.Explosions.Count - 1; i >= 0; i--)
         {
             var x = battle.Explosions[i];
@@ -587,6 +601,32 @@ sealed class LifecycleSystem : BattleSystem
             battle.Winner = alive[0] > 0 ? Faction.Coalition : Faction.Clans;
             battle.EndTime = battle.Time;
         }
+    }
+
+    static void AgeShieldHits(List<ShieldHitFx> list, float dt)
+    {
+        int w = 0;
+        for (int r = 0; r < list.Count; r++)
+        {
+            var x = list[r];
+            x.Life -= dt;
+            if (x.Life > 0)
+                list[w++] = x;
+        }
+        list.RemoveRange(w, list.Count - w);
+    }
+
+    static void AgeHullHits(List<HullHitFx> list, float dt)
+    {
+        int w = 0;
+        for (int r = 0; r < list.Count; r++)
+        {
+            var x = list[r];
+            x.Life -= dt;
+            if (x.Life > 0)
+                list[w++] = x;
+        }
+        list.RemoveRange(w, list.Count - w);
     }
 
     static void Age(List<BeamFx> beams, float dt)

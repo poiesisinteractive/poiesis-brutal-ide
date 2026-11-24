@@ -1,0 +1,194 @@
+{
+  "id": "battle",
+  "cues": [
+    {
+      "id": "canon",
+      "volume": 0.5,
+      "pitchVariation": 0.06,
+      "maxVoices": 6,
+      "minInterval": 0.06,
+      "range": 0,
+      "sound": {
+        "synth": {
+          "waveform": "saw",
+          "frequency": 180,
+          "endFrequency": 60,
+          "duration": 0.45,
+          "attack": 0.005,
+          "decay": 3.5,
+          "noise": 0.55,
+          "lowPass": 0.25,
+          "drive": 0.6
+        }
+      }
+    },
+    {
+      "id": "laser",
+      "volume": 0.3,
+      "pitchVariation": 0.08,
+      "maxVoices": 4,
+      "minInterval": 0.05,
+      "range": 0,
+      "sound": {
+        "synth": {
+          "waveform": "square",
+          "frequency": 1400,
+          "endFrequency": 500,
+          "duration": 0.18,
+          "attack": 0.005,
+          "decay": 2,
+          "noise": 0.05,
+          "lowPass": 0.5,
+          "drive": 0
+        }
+      }
+    },
+    {
+      "id": "lance",
+      "volume": 0.55,
+      "pitchVariation": 0.03,
+      "maxVoices": 2,
+      "minInterval": 0.2,
+      "range": 0,
+      "sound": {
+        "synth": {
+          "waveform": "saw",
+          "frequency": 220,
+          "endFrequency": 200,
+          "duration": 1.6,
+          "attack": 0.05,
+          "decay": 1.2,
+          "noise": 0.25,
+          "lowPass": 0.15,
+          "drive": 0.4
+        }
+      }
+    },
+    {
+      "id": "rayon",
+      "volume": 0.7,
+      "pitchVariation": 0.03,
+      "maxVoices": 1,
+      "minInterval": 0.3,
+      "range": 0,
+      "sound": {
+        "synth": {
+          "waveform": "square",
+          "frequency": 90,
+          "endFrequency": 40,
+          "duration": 1.2,
+          "attack": 0.005,
+          "decay": 1.5,
+          "noise": 0.4,
+          "lowPass": 0.2,
+          "drive": 0.8
+        }
+      }
+    },
+    {
+      "id": "missile",
+      "volume": 0.35,
+      "pitchVariation": 0.06,
+      "maxVoices": 3,
+      "minInterval": 0.08,
+      "range": 0,
+      "sound": {
+        "synth": {
+          "waveform": "saw",
+          "frequency": 300,
+          "endFrequency": 120,
+          "duration": 0.9,
+          "attack": 0.05,
+          "decay": 1.5,
+          "noise": 0.8,
+          "lowPass": 0.08,
+          "drive": 0
+        }
+      }
+    },
+    {
+      "id": "bouclier",
+      "volume": 0.25,
+      "pitchVariation": 0.1,
+      "maxVoices": 5,
+      "minInterval": 0.05,
+      "range": 0,
+      "sound": {
+        "synth": {
+          "waveform": "sine",
+          "frequency": 900,
+          "endFrequency": 650,
+          "duration": 0.25,
+          "attack": 0.005,
+          "decay": 2.5,
+          "noise": 0.2,
+          "lowPass": 0.6,
+          "drive": 0
+        }
+      }
+    },
+    {
+      "id": "impact",
+      "volume": 0.4,
+      "pitchVariation": 0.06,
+      "maxVoices": 5,
+      "minInterval": 0.05,
+      "range": 0,
+      "sound": {
+        "synth": {
+          "waveform": "sine",
+          "frequency": 140,
+          "endFrequency": 70,
+          "duration": 0.3,
+          "attack": 0.005,
+          "decay": 3,
+          "noise": 0.9,
+          "lowPass": 0.35,
+          "drive": 0.3
+        }
+      }
+    },
+    {
+      "id": "tourelle",
+      "volume": 0.6,
+      "pitchVariation": 0.06,
+      "maxVoices": 3,
+      "minInterval": 0.08,
+      "range": 0,
+      "sound": {
+        "synth": {
+          "waveform": "saw",
+          "frequency": 120,
+          "endFrequency": 40,
+          "duration": 0.8,
+          "attack": 0.005,
+          "decay": 2.5,
+          "noise": 0.8,
+          "lowPass": 0.3,
+          "drive": 0.5
+        }
+      }
+    },
+    {
+      "id": "explosion",
+      "volume": 1.0,
+      "pitchVariation": 0.08,
+      "maxVoices": 4,
+      "minInterval": 0.1,
+      "range": 0,
+      "sound": {
+        "synth": {
+          "waveform": "sine",
+          "frequency": 70,
+          "endFrequency": 25,
+          "duration": 2.6,
+          "attack": 0.01,
+          "decay": 2,
+          "noise": 0.85,
+          "lowPass": 0.12,
+          "drive": 0.7
+        }
+      }
+    }
+  ]
+}

@@ -208,7 +208,38 @@ public class BattleTests
         // Budget temps réel : 50 ms par pas (20 Hz). Large marge pour les machines de CI lentes et le Debug.
         Assert.True(msPerStep < 50, $"{msPerStep:0.0} ms par pas");
     }
-}
 
-[CollectionDefinition("sim", DisableParallelization = true)]
-public class SimCollection;
+    [Fact]
+    public void A_battle_records_impacts_and_sounds_from_the_cue_bank_and_feeds_the_hud()
+    {
+        var session = Start("capital-battle");
+        var battle = session.World.Resource<Battle>();
+        var sounds = session.World.Resource<Poiesis.Engine.Audio.SoundEvents>();
+        long cursor = 0;
+        var heard = new List<Poiesis.Engine.Audio.SoundEvent>();
+        bool shieldSeen = false, hullSeen = false;
+        for (int s = 0; s < 20 * 100; s++)
+        {
+            session.Run(1);
+            shieldSeen |= battle.ShieldHits.Count > 0;
+            hullSeen |= battle.HullHits.Count > 0;
+            cursor = sounds.ReadSince(cursor, heard);
+        }
+        Assert.True(shieldSeen, "aucun impact de bouclier");
+        Assert.True(hullSeen, "aucun impact sur coque");
+
+        // Chaque son demandé par la sim existe dans la banque d'Orionum.
+        var bank = Poiesis.Engine.Scene.ValueCodec.Read<Poiesis.Engine.Audio.CueBank>(
+            File.ReadAllText(Path.Combine(GameModuleTests.ContentRoot, "audio", "battle.cues.json")));
+        var cues = bank.Cues.Select(c => c.Id).ToHashSet();
+        var used = heard.Select(e => e.Cue).ToHashSet();
+        Assert.Subset(cues, used);
+        Assert.Contains("canon", used);
+        Assert.Contains("bouclier", used);
+
+        var catalog = session.World.Resource<Catalog>();
+        var coalition = Hud.SideOf(session.World, battle, catalog, Faction.Coalition);
+        Assert.Equal(25, coalition.Alive + coalition.Lost);
+        Assert.InRange(coalition.HullLeft / coalition.HullMax, 0.01f, 1f);
+    }
+}

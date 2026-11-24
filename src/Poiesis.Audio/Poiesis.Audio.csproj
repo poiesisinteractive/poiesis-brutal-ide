@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Le son des hôtes (éditeur, joueur) : SDL3_mixer, banques de sons du jeu, voix et spatialisation. -->
+  <PropertyGroup>
+    <RootNamespace>Poiesis.Audio</RootNamespace>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Poiesis.Engine.Core\Poiesis.Engine.Core.csproj" />
+    <ProjectReference Include="..\Poiesis.Engine.Scene\Poiesis.Engine.Scene.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Ahwoo.Brutal.Sdl" />
+    <PackageReference Include="Ahwoo.Brutal.Sdl.Mixer" />
+  </ItemGroup>
+
+</Project>

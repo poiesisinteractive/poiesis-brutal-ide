@@ -24,6 +24,9 @@
     <PackageVersion Include="Ahwoo.Brutal.Gltf" Version="2026.10.3" />
     <PackageVersion Include="Ahwoo.Brutal.MeshOptimizer" Version="2026.10.2" />
     <PackageVersion Include="Ahwoo.Brutal.Texture" Version="2026.10.3" />
+    <!-- Son (J4b) : SDL3 et SDL3_mixer. -->
+    <PackageVersion Include="Ahwoo.Brutal.Sdl" Version="2026.10.3" />
+    <PackageVersion Include="Ahwoo.Brutal.Sdl.Mixer" Version="2026.10.3" />
   </ItemGroup>
 
   <!-- IA. -->

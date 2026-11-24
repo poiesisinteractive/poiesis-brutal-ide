@@ -152,11 +152,24 @@ Poiesis Brutal IDE est un éditeur de jeux à la manière de Godot ou Unity, con
 | IA sur la scène | **Propositions sur une copie, fantômes, cases à cocher, une commande** | Rien ne change sans validation ; on garde une partie d'une proposition ; une annulation défait tout. |
 | Outils de l'agent de scène | **Scène et contenu seulement**, valeurs validées comme dans l'inspecteur | L'agent ne touche pas aux fichiers ; ses erreurs (type inconnu, hors bornes) lui reviennent pour qu'il corrige. |
 
+## Choix faits pendant le J4b (2026-11-24)
+
+| Sujet | Choix | Pourquoi |
+| --- | --- | --- |
+| Audio | **SDL_mixer** (SDL3_mixer, paquets `Ahwoo.Brutal.Sdl.Mixer`) | Choix de l'utilisateur : gratuit, bibliothèques natives fournies par BRUTAL, déjà le choix du POC. FMOD demandait une licence et des natives à fournir. |
+| Sons de la bataille | **Synthétisés** à partir des réglages du cue, de façon déterministe ; un fichier reste possible | Pas d'assets audio à produire ni à licencier ; un réglage s'écoute aussitôt dans le panneau Sons. |
+| Lien sim → audio | **Événements dans un anneau** (`SoundEvents`, ressource du monde), lus par l'hôte avec un curseur | La sim ne connaît pas l'audio ; les événements sont émis en code série, donc la sim reste déterministe ; sans hôte audio (tests, headless), ils sont simplement écrasés. |
+| Trop de sons | **Voix par cue, intervalle minimum, 12 sons au plus par image**, classés par gain | Une bataille tire des centaines de salves par seconde ; on garde les plus audibles. |
+| Pas de périphérique | **Pilote `dummy`** de SDL | L'éditeur et le joueur démarrent partout (cloud, CI, machine sans carte son). |
+| Tonemap | **Identité jusqu'à 0,8, courbe douce au-dessus** | Les couleurs de l'UI et des coques restent celles choisies ; seuls les effets HDR sont comprimés. |
+| Halos de loin | **Taille minimale à l'écran, intensité réduite d'autant** | Sans cela, une vue lointaine n'est qu'une tache blanche. |
+| UI de jeu | **ImGui** pour le HUD et les menus (question ouverte n° 3) | Comme le POC ; le même HUD sert dans l'éditeur. Une UI dédiée viendra si le jeu la demande. |
+
 ## Questions encore ouvertes
 
-1. **Audio** : FMOD (bindings BRUTAL, mais licence FMOD à payer et bibliothèques natives non fournies) ou SDL_mixer (choix du POC, gratuit, plus limité) ?
+1. ~~**Audio** : FMOD ou SDL_mixer ?~~ SDL_mixer (J4b).
 2. **Modèles 3D** : jusqu'où vont les modèles procéduraux du POC, et quand passe-t-on à l'import glTF ?
-3. **UI de jeu** : ImGui aussi en jeu, comme dans le POC, ou une UI dédiée plus tard ?
+3. **UI de jeu** : ImGui pour l'instant (J4b) ; une UI dédiée plus tard ?
 4. **Export** : comment l'éditeur produit-il un build de jeu autonome (copie des DLL, contenu compilé, exécutable hôte) ?
 5. **Coût de l'IA** : budget par feature, choix du modèle par tâche, et affichage des jetons consommés.
 6. **POC** : la suppression du TS (`tools/ts-reference`, tests de parité, `docs/PROTO-TS-README.md`) se fait dans le dépôt du POC, pas ici.

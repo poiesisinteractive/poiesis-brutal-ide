@@ -47,6 +47,29 @@ public struct ExplosionFx
     public float MaxLife;
 }
 
+/// <summary>
+/// Un coup encaissé par un bouclier : une gerbe d'hexagones sur la bulle du vaisseau, du côté du tir. La direction est
+/// gardée dans le repère du vaisseau (bâbord, dorsal, avant), pour suivre ses manœuvres.
+/// </summary>
+public struct ShieldHitFx
+{
+    public Poiesis.Engine.Ecs.Entity Ship;
+    public float3 LocalDir;
+    public float Strength;
+    public Faction Faction;
+    public float Life;
+    public float MaxLife;
+}
+
+/// <summary>Un coup qui traverse jusqu'à la coque : une gerbe d'étincelles au point d'impact.</summary>
+public struct HullHitFx
+{
+    public float3 Position;
+    public float Size;
+    public float Life;
+    public float MaxLife;
+}
+
 /// <summary>Une escadre : une flotte de la scène.</summary>
 public struct Group
 {
@@ -79,6 +102,11 @@ public sealed class Battle : ICloneableResource
 
     public List<BeamFx> Beams = new();
     public List<ExplosionFx> Explosions = new();
+    public List<ShieldHitFx> ShieldHits = new();
+    public List<HullHitFx> HullHits = new();
+
+    /// <summary>Au-delà, les impacts suivants ne sont plus montrés (le 500 contre 500 en produit des milliers par seconde).</summary>
+    public const int MaxImpactFx = 3000;
     public Group[] Groups = [];
 
     public int ShotsFired;
@@ -127,6 +155,8 @@ public sealed class Battle : ICloneableResource
         copy.Projectiles = (Projectile[])Projectiles.Clone();
         copy.Beams = new List<BeamFx>(Beams);
         copy.Explosions = new List<ExplosionFx>(Explosions);
+        copy.ShieldHits = new List<ShieldHitFx>(ShieldHits);
+        copy.HullHits = new List<HullHitFx>(HullHits);
         copy.Groups = (Group[])Groups.Clone();
         copy.Losses = (int[])Losses.Clone();
         copy.ShipsWide = new SpatialHash(ShipsWide.CellSize);

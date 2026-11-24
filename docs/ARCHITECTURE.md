@@ -202,6 +202,23 @@ Appliquer ── ScenePlan.Apply(ops cochées) ── une CompositeCommand sur l
 
   L'agent n'a pas accès aux fichiers : seulement à la scène ouverte, par ces outils. La copie et la proposition tiennent des nœuds du jeu : elles sont oubliées au rechargement, et le rechargement attend la fin d'un agent en cours.
 
+## Effets, son et HUD (J4b)
+
+- **HDR et bloom** (`PostProcess`, Poiesis.Render) : `SceneRenderer` dessine dans une cible RGBA16F, puis `PostProcess.Apply` : préfiltre (seuil doux) vers le niveau 1, descentes successives (4 échantillons), remontées en tente ajoutées au niveau du dessus, enfin composition (scène + bloom × intensité, exposition, courbe douce) dans la cible RGBA8 qu'ImGui affiche. `RenderFrame.Post` règle bloom, seuil et exposition.
+- **Halos** : `RenderFrame.Glow` → sprites instanciés face caméra (vecteurs droite et haut de la caméra dans les push constants), mélange additif, sans écriture de profondeur. Le jeu les demande par `DrawContext.Glow`, comme ses lignes.
+- **Effets d'Orionum** : la sim garde les impacts (`ShieldHits` avec la direction dans le repère du vaisseau, `HullHits`) avec une durée de vie, vieillis à chaque pas ; `Effects.Draw` en fait des lignes et des halos, sans rien garder entre deux images.
+- **Son** :
+
+```text
+sim (code série) ── SoundEvents.Play(cue, position, volume) ── anneau de 1024 événements (ressource du monde)
+hôte (éditeur, joueur) ── AudioEngine.Update(monde, curseur, Listener) ── VoicePolicy (voix, intervalle) ── gain × panoramique
+   └─ banques content/audio/*.cues.json ── Synthesizer.Render (ou fichier) ── MIX_Audio préparé une fois ── 32 pistes SDL_mixer
+```
+
+  `CueBank`, `Synthesizer` et `VoicePolicy` sont dans le moteur, sans SDL, donc testés seuls ; `Poiesis.Audio` ne fait que jouer. Le panneau Sons écrit le JSON puis recharge les banques.
+- **HUD** : `IGameHud.DrawHud(World, HudContext)` ; le contexte donne le rectangle de la vue, la projection monde → écran, l'entité choisie (modifiable par le HUD), l'heure, la vitesse et `InEditor`. Le joueur s'en sert à la place de `DrawOverlay` ; l'éditeur le dessine pendant le Play.
+- **Joueur** : écrans Menu, En jeu, Pause, Options, Fin ; les scénarios viennent de `content/scenarios` ; options dans `user/options.json`.
+
 ## Rendu (Poiesis.Render)
 
 - **`VulkanContext`** : instance, surface, device (GPU dédié de préférence, sinon intégré, sinon logiciel), file unique dessin et présentation, allocateur VMA, envois ponctuels (`Immediate`).
@@ -226,7 +243,8 @@ src/
   Poiesis.Engine.Core/     ECS, systèmes, pas fixe
   Poiesis.Engine.Scene/    nœuds, sérialisation, contrat IGameModule
   Poiesis.Engine.Hosting/  chargement à chaud, session de jeu
-  Poiesis.Render/          rendu Vulkan 1.3 (contexte, swapchain, viewport, maillages)
+  Poiesis.Render/          rendu Vulkan 1.3 (contexte, swapchain, viewport, maillages, HDR et bloom)
+  Poiesis.Audio/           lecture des sons (SDL3_mixer)
   Poiesis.AI/              fournisseurs, agent, workflow feature
   Poiesis.Editor.Core/     modèle de l'éditeur (session, commandes, build, projet, journal)
   Poiesis.Editor/          exécutable de l'IDE (ImGui, panneaux, splash)

@@ -11,10 +11,12 @@ public sealed class DrawContext
 {
     public readonly record struct LineItem(float3 A, float3 B, float4 Color);
     public readonly record struct LabelItem(float3 At, string Text, float4 Color);
+    public readonly record struct GlowItem(float3 At, float Radius, float4 Color);
 
     readonly List<LineItem> _lines = new();
     readonly List<LabelItem> _labels = new();
     readonly List<(string Text, float4 Color)> _hud = new();
+    readonly List<GlowItem> _glows = new();
 
     public HashSet<string> EnabledChannels { get; } = new(StringComparer.Ordinal);
 
@@ -29,6 +31,9 @@ public sealed class DrawContext
 
     public IReadOnlyList<LineItem> Lines => _lines;
     public IReadOnlyList<LabelItem> Labels => _labels;
+
+    /// <summary>Lueurs additives (tirs, flammes, éclairs).</summary>
+    public IReadOnlyList<GlowItem> Glows => _glows;
     public IReadOnlyList<(string Text, float4 Color)> Hud => _hud;
 
     public bool IsEnabled(string channel) => EnabledChannels.Contains(channel);
@@ -50,6 +55,12 @@ public sealed class DrawContext
 
     public void Label(float3 at, string text, float4 color) => _labels.Add(new LabelItem(at, text, color));
 
+    /// <summary>
+    /// Une lueur : un disque doux et additif face à la caméra. Une couleur au-delà de 1 déborde en halo (bloom) ;
+    /// l'alpha règle l'intensité.
+    /// </summary>
+    public void Glow(float3 at, float radius, float4 color) => _glows.Add(new GlowItem(at, radius, color));
+
     public void HudLine(string text, float4 color) => _hud.Add((text, color));
 
     /// <summary>Taille en mètres qui fait <paramref name="pixels"/> pixels à l'écran à la position donnée.</summary>
@@ -61,5 +72,6 @@ public sealed class DrawContext
         _lines.Clear();
         _labels.Clear();
         _hud.Clear();
+        _glows.Clear();
     }
 }

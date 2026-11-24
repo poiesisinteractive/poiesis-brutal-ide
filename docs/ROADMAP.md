@@ -171,11 +171,11 @@ Critère du J3 atteint : *le croiseur de la Coalition est conçu dans le concept
 
 À vérifier sur Windows : rendu des textures, libktx et meshoptimizer natifs dans le jeu exporté.
 
-## J4 : effets, son, UI de jeu, et édition de scène avancée
+## J4 : effets, son, UI de jeu, et édition de scène avancée ✅
 
 Critère : *on compose la bataille à l'échelle de Wolf 359 (astres, flottes, escadres) en multi-sélection et magnétisme, ou en demandant à l'IA « place trois escadres en tenaille autour des Clans ». On voit l'aperçu, on valide, et la bataille a ses effets, son son et son HUD.*
 
-Découpé en deux : l'éditeur d'abord (aucune décision en attente), le jeu ensuite (l'audio attend le choix FMOD ou SDL_mixer).
+Découpé en deux : l'éditeur d'abord (aucune décision en attente), le jeu ensuite (l'audio a été fait avec SDL_mixer).
 
 ## J4a : édition de scène avancée et IA sur la scène ✅
 
@@ -192,12 +192,29 @@ Corrigé en chemin : rappeler une caméra faisait planter l'éditeur (le format 
 
 ![Deux flottes sélectionnées, gizmo de rotation du groupe, magnétisme](images/multi-selection.png)
 
-## J4b : effets, son, HUD et menus
+## J4b : effets, son, HUD et menus ✅
 
-Jeu :
-- effets : tirs, impacts de bouclier hexagonaux, explosions, HDR et bloom en Vulkan ;
-- audio selon la décision FMOD ou SDL_mixer (question ouverte n° 1), avec des banques de cues éditables ;
-- HUD et menus.
+| Élément | État |
+| --- | --- |
+| **HDR et bloom** (Vulkan) : la scène est rendue en RGBA16F ; bloom sur 5 niveaux (seuil doux, descente, remontée additive) ; composition avec une courbe douce au-dessus de 0,8, identité en dessous | ✅ |
+| **Halos** (`DrawContext.Glow`) : sprites additifs face caméra, instanciés | ✅ |
+| **Effets d'Orionum** : traçantes des tirs, rayons et lances, impacts de bouclier en hexagones sur la sphère du bouclier, étincelles sur la coque, explosions (boule de feu, cœur, éclair, gerbe) ; atténués de loin pour ne pas saturer | ✅ |
+| **Audio SDL_mixer** (`Poiesis.Audio`, SDL3 et SDL3_mixer de BRUTAL) : la sim émet des événements sonores dans un anneau, l'éditeur et le joueur les jouent ; atténuation selon la distance, panoramique, voix limitées par cue, intervalle minimum, variation de hauteur | ✅ vérifié avec les pilotes `disk` et `dummy` de SDL |
+| **Banques de cues éditables** (`content/audio/*.cues.json`) : sons synthétisés (forme d'onde, glissement de fréquence, enveloppe, bruit, filtre, saturation) ou fichiers ; panneau « Sons » : réglages, forme d'onde, écouter, enregistrer ; rechargement à chaud | ✅ 9 cues pour la bataille |
+| **HUD du jeu** (`IGameHud`) : horloge, jauges des deux camps, fiche du vaisseau choisi (coque, six faces de bouclier, tourelles, sous-systèmes), bannière de victoire ; aussi dans l'éditeur pendant le Play | ✅ |
+| **Menus du joueur** : menu principal (scénarios, scène en fond), pause, options (volumes, bloom, aide, gardées dans `user/options.json`), écran de fin avec le bilan | ✅ export Linux vérifié, SDL3 et SDL3_mixer livrés |
+
+![Une passe d'armes : traçantes, halos, impacts de bouclier et explosion](images/effects-bloom.png)
+
+![Le jeu exporté : HUD, fiche d'un vaisseau](images/player-hud.png)
+
+![Le panneau Sons : réglages d'un cue synthétisé et sa forme d'onde](images/sound-panel.png)
+
+![L'écran de fin du jeu exporté, avec le bilan de la bataille](images/player-end.png)
+
+**Bataille** : une bataille des capitaux joue plus de 320 sons en 100 s, chaque cue de la banque au moins une fois. Le 500 contre 500 reste à 2,6 ms par pas : la sim ne fait qu'ajouter des événements dans des listes, en code série, donc reste déterministe.
+
+À vérifier sur Windows et sur une vraie carte son : rien n'a été écouté ici (pas de périphérique audio dans le cloud) ; le signal a été vérifié en écrivant la sortie sur disque. Le déséquilibre d'Orionum (Coalition à 100 %) reste à traiter.
 
 ## Plus tard
 

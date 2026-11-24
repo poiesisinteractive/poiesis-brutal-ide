@@ -60,6 +60,15 @@ public sealed class WorldView
 
     public float PixelsPerRadian => ImageSize.Y / Fov;
 
+    /// <summary>L'auditeur du son : la caméra, son axe droit (panoramique) et sa distance au point visé.</summary>
+    public Poiesis.Engine.Audio.Listener Listener()
+    {
+        var eye = EyePosition();
+        var forward = float3.NormalizeOrZero(Target - eye);
+        var right = float3.NormalizeOrZero(float3.Cross(forward, new float3(0, 1, 0)));
+        return new Poiesis.Engine.Audio.Listener(eye, right, Distance);
+    }
+
     public float3 EyePosition()
     {
         var dir = new float3(MathF.Cos(Pitch) * MathF.Sin(Yaw), MathF.Sin(Pitch), MathF.Cos(Pitch) * MathF.Cos(Yaw));
@@ -181,6 +190,8 @@ public sealed class WorldView
         }
         foreach (var l in Draw.Lines)
             Frame.Line(l.A, l.B, l.Color);
+        foreach (var g in Draw.Glows)
+            Frame.Glow(g.At, g.Radius, g.Color);
 
         if (selectedEntity >= 0 && !world.EntityAt(selectedEntity).IsNull && world.Store<Transform>().Has(selectedEntity))
         {

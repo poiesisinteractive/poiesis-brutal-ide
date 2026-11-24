@@ -34,33 +34,7 @@ public sealed class Visuals : IWorldVisualizer
         if (!world.TryResource<Battle>(out var battle) || !world.TryResource<Catalog>(out var catalog))
             return;
 
-        // Traînées : longueur à l'échelle du zoom pour rester visibles de loin.
-        for (int i = 0; i < battle.ProjectileCount; i++)
-        {
-            ref var p = ref battle.Projectiles[i];
-            if (!p.Alive)
-                continue;
-            float speed = p.Velocity.Length();
-            if (speed < 1)
-                continue;
-            float len = MathF.Max(speed * 0.06f, ctx.MetersForPixels(p.Position, p.Kind == WeaponKind.Missile ? 6 : 10));
-            var color = p.Kind == WeaponKind.Missile ? Missile : FactionFire(p.Faction);
-            ctx.Line(p.Position - p.Velocity / speed * len, p.Position, color);
-        }
-
-        foreach (var b in battle.Beams)
-        {
-            float a = Math.Clamp(b.Life / b.MaxLife, 0.2f, 1);
-            ctx.Line(b.From, b.To, FactionFire(b.Faction, a));
-        }
-
-        foreach (var x in battle.Explosions)
-        {
-            float t = 1 - x.Life / x.MaxLife;
-            float r = MathF.Max(x.Radius * (0.3f + t), ctx.MetersForPixels(x.Position, 4 + 10 * t));
-            var c = Explosion with { W = 1 - t };
-            SphereWire(ctx, x.Position, r, c);
-        }
+        Effects.Draw(world, battle, catalog, ctx);
 
         DrawDebug(world, battle, catalog, ctx);
         DrawHud(world, battle, ctx);
@@ -164,6 +138,175 @@ public sealed class Visuals : IWorldVisualizer
             ctx.Line(c + new float3(MathF.Cos(a0), MathF.Sin(a0), 0) * r, c + new float3(MathF.Cos(a1), MathF.Sin(a1), 0) * r, color);
             ctx.Line(c + new float3(MathF.Cos(a0), 0, MathF.Sin(a0)) * r, c + new float3(MathF.Cos(a1), 0, MathF.Sin(a1)) * r, color);
             ctx.Line(c + new float3(0, MathF.Cos(a0), MathF.Sin(a0)) * r, c + new float3(0, MathF.Cos(a1), MathF.Sin(a1)) * r, color);
+        }
+    }
+}
+
+/// <summary>
+/// Les effets de bataille, en couleurs HDR (au-delà de 1, elles débordent en halo par le bloom) : traînées et têtes
+/// lumineuses des obus et missiles, rayons, gerbes hexagonales sur les boucliers, étincelles sur les coques, boules de
+/// feu, éclairs et éclats des explosions. Tailles minimales à l'écran, pour que la bataille se lise de loin.
+/// </summary>
+static class Effects
+{
+    static float4 Hdr(float4 c, float k) => new(c.X * k, c.Y * k, c.Z * k, c.W);
+
+    /// <summary>
+    /// Rayon d'une lueur, au moins <paramref name="pixels"/> à l'écran, et facteur d'intensité : grossie pour rester
+    /// visible de loin, elle s'atténue d'autant (sinon, vue de loin, la bataille n'est qu'une tache blanche).
+    /// </summary>
+    static (float Radius, float Gain) Visible(DrawContext ctx, float3 at, float meters, float pixels)
+    {
+        float min = ctx.MetersForPixels(at, pixels);
+        return meters >= min ? (meters, 1) : (min, Math.Clamp(meters / min, 0.15f, 1));
+    }
+
+    public static float4 ShieldColor(Faction f) => f == Faction.Coalition ? new float4(0.35f, 0.8f, 1f, 1) : new float4(1f, 0.65f, 0.25f, 1);
+
+    static readonly float4 Fire = new(1f, 0.55f, 0.18f, 1);
+    static readonly float4 Flash = new(1f, 0.95f, 0.85f, 1);
+    static readonly float4 MissileGlow = new(1f, 0.9f, 0.55f, 1);
+
+    public static void Draw(World world, Battle battle, Catalog catalog, DrawContext ctx)
+    {
+        Projectiles(battle, ctx);
+        Beams(battle, ctx);
+        ShieldHits(world, battle, catalog, ctx);
+        HullHits(battle, ctx);
+        Explosions(battle, ctx);
+    }
+
+    static void Projectiles(Battle battle, DrawContext ctx)
+    {
+        for (int i = 0; i < battle.ProjectileCount; i++)
+        {
+            ref var p = ref battle.Projectiles[i];
+            if (!p.Alive)
+                continue;
+            float speed = p.Velocity.Length();
+            if (speed < 1)
+                continue;
+            bool missile = p.Kind == WeaponKind.Missile;
+            float len = MathF.Max(speed * 0.06f, ctx.MetersForPixels(p.Position, missile ? 8 : 12));
+            var color = missile ? MissileGlow : Visuals.FactionFire(p.Faction);
+            var tail = p.Position - p.Velocity / speed * len;
+            ctx.Line(tail, p.Position, Hdr(color, 2.2f));
+            var (pr, pk) = Visible(ctx, p.Position, missile ? 25 : 10, missile ? 5 : 3);
+            ctx.Glow(p.Position, pr, Hdr(color, (missile ? 1.6f : 1.1f) * MathF.Max(pk, 0.4f)));
+        }
+    }
+
+    static void Beams(Battle battle, DrawContext ctx)
+    {
+        foreach (var b in battle.Beams)
+        {
+            float a = Math.Clamp(b.Life / b.MaxLife, 0.15f, 1);
+            var color = Visuals.FactionFire(b.Faction);
+            ctx.Line(b.From, b.To, Hdr(color, 4 * a));
+            var (r, k) = Visible(ctx, b.To, b.Width * 12, 3 + b.Width * 2);
+            ctx.Glow(b.To, r, Hdr(color, 1.5f * a * k));
+            ctx.Glow(b.From, r * 0.5f, Hdr(color, 1f * a * k));
+        }
+    }
+
+    /// <summary>
+    /// Un coup sur un bouclier : sept hexagones (un centre, six autour) posés sur la bulle du vaisseau, du côté du tir,
+    /// qui s'éteignent en ~0,6 s. Vus de trop loin pour qu'on distingue les cellules : une simple lueur.
+    /// </summary>
+    static void ShieldHits(World world, Battle battle, Catalog catalog, DrawContext ctx)
+    {
+        var transforms = world.Store<Transform>();
+        var motions = world.Store<Motion>();
+        var ships = world.Store<Ship>();
+        foreach (var h in battle.ShieldHits)
+        {
+            if (!world.IsAlive(h.Ship) || !transforms.Has(h.Ship.Index) || !motions.Has(h.Ship.Index))
+                continue;
+            var cls = catalog.Classes[ships.Get(h.Ship.Index).Class].Def;
+            var center = transforms.Get(h.Ship.Index).Position;
+            var frame = Frame.FromForward(motions.Get(h.Ship.Index).Forward);
+            var dir = float3.NormalizeOrZero(frame.Port * h.LocalDir.X + frame.Up * h.LocalDir.Y + frame.Fwd * h.LocalDir.Z);
+            if (dir.LengthSquared() < 0.5f)
+                continue;
+            float fade = h.Life / h.MaxLife;
+            float radius = cls.Radius * 1.15f;
+            var color = ShieldColor(h.Faction);
+            var at = center + dir * radius;
+            float cell = radius * 0.11f * h.Strength;
+            if (cell < ctx.MetersForPixels(at, 2.5f))
+            {
+                ctx.Glow(at, MathF.Max(cell * 3, ctx.MetersForPixels(at, 3)), Hdr(color, 1.6f * fade));
+                continue;
+            }
+            var a = Frame.SafeNormalize(float3.Cross(dir, MathF.Abs(dir.Y) < 0.9f ? new float3(0, 1, 0) : new float3(1, 0, 0)), new float3(1, 0, 0));
+            var b = float3.Cross(dir, a);
+            // Le centre, puis l'anneau de six (pavage hexagonal : voisins à √3 × le rayon de cellule).
+            Hexagon(ctx, center, radius, at, a, b, 0, 0, cell, Hdr(color, 2.6f * fade));
+            for (int k = 0; k < 6; k++)
+            {
+                float ang = MathF.PI / 6 + k * MathF.PI / 3;
+                float d = cell * MathF.Sqrt(3);
+                Hexagon(ctx, center, radius, at, a, b, MathF.Cos(ang) * d, MathF.Sin(ang) * d, cell, Hdr(color, 1.4f * fade * fade));
+            }
+            ctx.Glow(at, cell * 2.2f, Hdr(color, 1.2f * fade));
+        }
+    }
+
+    /// <summary>Un hexagone dans le plan tangent (a, b), ramené sur la sphère du bouclier.</summary>
+    static void Hexagon(DrawContext ctx, float3 center, float radius, float3 at, float3 a, float3 b, float x, float y, float size, float4 color)
+    {
+        float3 Corner(int k)
+        {
+            float ang = k * MathF.PI / 3;
+            var p = at + a * (x + MathF.Cos(ang) * size * 0.92f) + b * (y + MathF.Sin(ang) * size * 0.92f);
+            return center + float3.NormalizeOrZero(p - center) * radius;
+        }
+        var first = Corner(0);
+        var prev = first;
+        for (int k = 1; k <= 6; k++)
+        {
+            var next = k == 6 ? first : Corner(k);
+            ctx.Line(prev, next, color);
+            prev = next;
+        }
+    }
+
+    static void HullHits(Battle battle, DrawContext ctx)
+    {
+        foreach (var h in battle.HullHits)
+        {
+            float fade = h.Life / h.MaxLife;
+            var (r, k) = Visible(ctx, h.Position, h.Size, 3);
+            ctx.Glow(h.Position, r * (1.5f - fade * 0.5f), Hdr(Fire, 1.5f * fade * k));
+            ctx.Glow(h.Position, r * 0.5f, Hdr(Flash, 2 * fade * fade * k));
+        }
+    }
+
+    static void Explosions(Battle battle, DrawContext ctx)
+    {
+        foreach (var x in battle.Explosions)
+        {
+            float t = 1 - x.Life / x.MaxLife;
+            var (r, k) = Visible(ctx, x.Position, x.Radius * (0.35f + 0.9f * t), 6 + 22 * t);
+            k = MathF.Max(k, 0.3f);
+            // Boule de feu qui gonfle et s'éteint ; éclair blanc au tout début.
+            ctx.Glow(x.Position, r, Hdr(Fire, 1.6f * (1 - t) * (1 - t) * k));
+            ctx.Glow(x.Position, r * 0.5f, Hdr(new float4(1f, 0.8f, 0.45f, 1), 1.4f * (1 - t) * k));
+            if (t < 0.15f)
+                ctx.Glow(x.Position, r * 1.3f, Hdr(Flash, 2.5f * (1 - t / 0.15f) * k));
+            // Éclats : douze traits, directions tirées de la position (stables d'une image à l'autre).
+            uint seed = (uint)(x.Position.X * 13 + x.Position.Y * 7 + x.Position.Z * 3);
+            for (int spark = 0; spark < 12; spark++)
+            {
+                seed = seed * 1664525 + 1013904223;
+                float u = (seed >> 8) / 16777216f;
+                seed = seed * 1664525 + 1013904223;
+                float v = (seed >> 8) / 16777216f;
+                float theta = u * MathF.Tau, z = v * 2 - 1, s = MathF.Sqrt(1 - z * z);
+                var d = new float3(s * MathF.Cos(theta), z, s * MathF.Sin(theta));
+                var from = x.Position + d * r * 0.6f;
+                ctx.Line(from, from + d * r * (0.4f + 0.8f * t), Hdr(Fire, 2.5f * (1 - t)));
+            }
         }
     }
 }

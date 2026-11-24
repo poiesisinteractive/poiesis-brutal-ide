@@ -13,6 +13,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Poiesis.Runtime\Poiesis.Runtime.csproj" />
+    <ProjectReference Include="..\Poiesis.Audio\Poiesis.Audio.csproj" />
     <!-- Le jeu référence l'API d'extension : il faut la livrer pour charger ses types, même sans éditeur. -->
     <ProjectReference Include="..\Poiesis.Editor.Api\Poiesis.Editor.Api.csproj" />
   </ItemGroup>

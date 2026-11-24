@@ -11,6 +11,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Poiesis.Editor.Core\Poiesis.Editor.Core.csproj" />
     <ProjectReference Include="..\Poiesis.Runtime\Poiesis.Runtime.csproj" />
+    <ProjectReference Include="..\Poiesis.Audio\Poiesis.Audio.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -30,6 +30,10 @@ sealed class EditorApp : IDisposable
     readonly DataPanel _data;
     readonly ContentPanel _content;
     readonly ExtensionHost _extensions;
+    readonly Poiesis.Audio.AudioEngine _audio;
+    readonly SoundPanel _sounds;
+    long _soundCursor;
+    Poiesis.Engine.Hosting.PlaySession? _soundSession;
     readonly PreviewView _preview;
     readonly ThumbnailService _thumbnails;
     int _frameCount;
@@ -80,6 +84,8 @@ sealed class EditorApp : IDisposable
         _extensions.PreviewView = _preview;
         _thumbnails = new ThumbnailService(vk, imgui.Renderer, _session, _extensions, _log, _project.Root);
         _content.Thumbnails = _thumbnails;
+        _audio = new Poiesis.Audio.AudioEngine(_project.ContentRoot, m => _log.Warn("son", m));
+        _sounds = new SoundPanel(_audio, _log);
         _viewport.Extensions = _extensions;
         _viewport.Cameras = new CameraBookmarks(_project.Root);
         _inspector.Extensions = _extensions.DrawInspectors;
@@ -218,6 +224,7 @@ sealed class EditorApp : IDisposable
         CheckPreviousGeneration();
         _session.UpdatePreview();
         _session.Update(ImGui.GetIO().DeltaTime);
+        UpdateAudio();
 
         var dockspace = ImGui.DockSpaceOverViewport(default, ImGui.GetMainViewport(), ImGuiDockNodeFlags.PassthruCentralNode);
         if (!_imgui.HasLayout && !_layoutBuilt)
@@ -237,6 +244,8 @@ sealed class EditorApp : IDisposable
         _debug.Draw();
         _analysis.Draw();
         _extensions.DrawPanels(p => DockLikeIfNew(SiblingOf(p.Placement)));
+        DockLikeIfNew("Console");
+        _sounds.Draw();
         if (_showAbout)
             About();
         UnsavedChangesPopup();
@@ -258,6 +267,25 @@ sealed class EditorApp : IDisposable
         var window = ImGui.Internal.FindWindowByName(sibling);
         if (!window.IsNull() && window.DockId != default)
             ImGui.SetNextWindowDockID(window.DockId, ImGuiCond.FirstUseEver);
+    }
+
+    /// <summary>Le son de la partie en cours : les sons demandés par la sim depuis l'image précédente, entendus depuis la caméra.</summary>
+    void UpdateAudio()
+    {
+        if (_session.Play is not { } play)
+        {
+            if (_soundSession is not null)
+                _audio.StopAll();
+            _soundSession = null;
+            return;
+        }
+        if (play != _soundSession)
+        {
+            _soundSession = play;
+            _soundCursor = 0;
+        }
+        if (_session.PlayState == PlayState.Playing)
+            _audio.Update(play.World, ref _soundCursor, _viewport.Listener());
     }
 
     void Arrange(IEditorCommand? command)
@@ -590,6 +618,7 @@ sealed class EditorApp : IDisposable
         ImGui.Internal.DockBuilderDockWindow("Console"u8, bottom);
         ImGui.Internal.DockBuilderDockWindow("Entités"u8, bottom);
         ImGui.Internal.DockBuilderDockWindow("Données"u8, bottom);
+        ImGui.Internal.DockBuilderDockWindow("Sons"u8, bottom);
         ImGui.Internal.DockBuilderFinish(dockspace);
     }
 
@@ -650,6 +679,7 @@ sealed class EditorApp : IDisposable
                 case "camera-save": _viewport.SaveCamera(int.Parse(arg)); break;
                 case "camera": _viewport.RecallCamera(int.Parse(arg)); break;
                 case "frame": _viewport.FrameSelection(); break;
+                case "zoom": _viewport.ZoomBy(float.Parse(arg, System.Globalization.CultureInfo.InvariantCulture)); break;
                 case "play": Play(); break;
                 case "pause": _session.TogglePause(); break;
                 case "step": for (int i = 0; i < int.Parse(arg.Length > 0 ? arg : "1"); i++) _session.StepOnce(); break;
@@ -694,6 +724,7 @@ sealed class EditorApp : IDisposable
                 case "focus": ImGui.SetWindowFocus(arg); break;
                 case "grid": _content.Grid = arg != "off"; break;
                 case "content-select": _content.Select(arg); break;
+                case "sound": _audio.Preview(arg); break;
                 case "tool":
                     if (!_extensions.RunMenu(arg))
                         _log.Warn("script", $"Commande d'extension inconnue : {arg}");
@@ -743,6 +774,7 @@ sealed class EditorApp : IDisposable
     {
         _splash.Dispose();
         _thumbnails.Dispose();
+        _audio.Dispose();
         _preview.Dispose();
         _renderer.Dispose();
         _session.Dispose();

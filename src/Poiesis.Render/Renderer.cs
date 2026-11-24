@@ -25,6 +25,36 @@ public struct LineVertex
     }
 }
 
+/// <summary>Réglages du post-traitement d'une image.</summary>
+public struct PostSettings
+{
+    /// <summary>Intensité du bloom (0 : aucun). Les couleurs au-delà de 1 (tirs, explosions) débordent en halo.</summary>
+    public float Bloom;
+
+    /// <summary>Seuil à partir duquel une couleur déborde, et douceur de ce seuil.</summary>
+    public float Threshold;
+
+    /// <summary>Multiplie la lumière avant le tonemapping.</summary>
+    public float Exposure;
+
+    public static PostSettings Default => new() { Bloom = 0.5f, Threshold = 1.0f, Exposure = 1f };
+}
+
+/// <summary>Une lueur : un disque additif face à la caméra (tirs, flammes, éclairs). Couleur HDR : au-delà de 1, elle déborde en halo.</summary>
+public struct Sprite
+{
+    public float3 Center;
+    public float Radius;
+    public float4 Color;
+
+    public Sprite(float3 center, float radius, float4 color)
+    {
+        Center = center;
+        Radius = radius;
+        Color = color;
+    }
+}
+
 public struct Camera
 {
     public float3 Position;
@@ -58,6 +88,14 @@ public sealed class RenderFrame
 
     public List<LineVertex> Lines { get; } = new();
 
+    /// <summary>Lueurs additives, dessinées après les maillages et les lignes.</summary>
+    public List<Sprite> Sprites { get; } = new();
+
+    /// <summary>Bloom, seuil et exposition de cette image.</summary>
+    public PostSettings Post = PostSettings.Default;
+
+    public void Glow(float3 center, float radius, float4 color) => Sprites.Add(new Sprite(center, radius, color));
+
     public void Draw(MeshHandle mesh, in MeshInstance instance)
     {
         if (!_batches.TryGetValue(mesh, out var list))
@@ -76,5 +114,6 @@ public sealed class RenderFrame
         foreach (var list in _batches.Values)
             list.Clear();
         Lines.Clear();
+        Sprites.Clear();
     }
 }

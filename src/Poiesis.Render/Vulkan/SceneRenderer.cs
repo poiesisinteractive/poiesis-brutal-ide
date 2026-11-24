@@ -39,6 +39,8 @@ public sealed unsafe class SceneRenderer : IDisposable
     {
         public float4x4 ViewProjection;
         public float4 LightDirection;
+        public float4 CameraRight;
+        public float4 CameraUp;
     }
 
     sealed class GpuBuffer
@@ -71,6 +73,7 @@ public sealed unsafe class SceneRenderer : IDisposable
         public VkImageLayout ColorLayout;
         public GpuBuffer? InstanceBuffer;
         public GpuBuffer? LineBuffer;
+        public GpuBuffer? SpriteBuffer;
     }
 
     readonly VulkanContext _vk;
@@ -87,6 +90,8 @@ public sealed unsafe class SceneRenderer : IDisposable
     readonly VkPipelineLayout _layout;
     readonly VkPipeline _meshPipeline;
     readonly VkPipeline _linePipeline;
+    readonly VkPipeline _spritePipeline;
+    readonly PostProcess _post;
     InstanceData[] _instanceScratch = new InstanceData[256];
 
     public SceneRenderer(VulkanContext vk, int framesInFlight)
@@ -150,14 +155,38 @@ public sealed unsafe class SceneRenderer : IDisposable
 
         using var compiler = ShaderC.CreateCompiler();
         using var options = ShaderC.CreateCompilerOptions();
+        var alpha = new VkPipelineColorBlendAttachmentState
+        {
+            BlendEnable = true,
+            SrcColorBlendFactor = VkBlendFactor.SrcAlpha,
+            DstColorBlendFactor = VkBlendFactor.OneMinusSrcAlpha,
+            ColorBlendOp = VkBlendOp.Add,
+            SrcAlphaBlendFactor = VkBlendFactor.One,
+            DstAlphaBlendFactor = VkBlendFactor.OneMinusSrcAlpha,
+            AlphaBlendOp = VkBlendOp.Add,
+            ColorWriteMask = (VkColorComponentFlags)0xF,
+        };
+        var additive = alpha with { SrcColorBlendFactor = VkBlendFactor.One, DstColorBlendFactor = VkBlendFactor.One, SrcAlphaBlendFactor = VkBlendFactor.Zero, DstAlphaBlendFactor = VkBlendFactor.One };
         _meshPipeline = CreatePipeline(compiler, options, Shaders.MeshVertex, Shaders.MeshFragment,
             new VertexInput(2, 8)
                 .AddBindingWithAttributes<MeshVertex>(0, 0, VkVertexInputRate.Vertex)
                 .AddBindingWithAttributes<InstanceData>(3, 1, VkVertexInputRate.Instance),
-            Presets.InputAssembly.TriangleList, depthWrite: true);
+            Presets.InputAssembly.TriangleList, depthWrite: true, alpha);
         _linePipeline = CreatePipeline(compiler, options, Shaders.LineVertex, Shaders.LineFragment,
             new VertexInput(1, 2).AddBindingWithAttributes<LineVertex>(0, 0, VkVertexInputRate.Vertex),
-            Presets.InputAssembly.LineList, depthWrite: false);
+            Presets.InputAssembly.LineList, depthWrite: false, alpha);
+        _spritePipeline = CreatePipeline(compiler, options, Shaders.SpriteVertex, Shaders.SpriteFragment,
+            new VertexInput(1, 3).AddBindingWithAttributes<Sprite>(0, 0, VkVertexInputRate.Instance),
+            Presets.InputAssembly.TriangleList, depthWrite: false, additive);
+        _post = new PostProcess(vk, framesInFlight, compiler, options, (c, o, glsl, kind) => CompileModule(c, o, glsl, kind));
+    }
+
+    VkShaderModule CompileModule(Compiler compiler, CompileOptions options, ReadOnlySpan<byte> glsl, ShaderKind kind)
+    {
+        using var spirv = compiler.Compile(glsl, kind, "poiesis"u8, "main"u8, options);
+        if (spirv.GetCompilationStatus() != CompilationStatus.Success)
+            throw new InvalidOperationException($"Shader : {spirv.GetErrorMessage()}");
+        return ShaderModuleExtensions.FromSpirv(_vk.Device, new ReadOnlySpan<byte>(spirv.GetBytes(), (int)spirv.GetLength()), null);
     }
 
     public VkSampler Sampler { get; }
@@ -266,6 +295,7 @@ public sealed unsafe class SceneRenderer : IDisposable
             DestroyImages(t);
             CreateImages(t, size);
         }
+        _post.Resize(size);
         Size = size;
         TargetVersion++;
     }
@@ -304,6 +334,10 @@ public sealed unsafe class SceneRenderer : IDisposable
         EnsureCapacity(ref t.LineBuffer, (ulong)Math.Max(lines.Length, 2) * (ulong)sizeof(LineVertex), VkBufferUsageFlags.VertexBufferBit);
         MemoryMarshal.AsBytes(lines).CopyTo(new Span<byte>((void*)t.LineBuffer!.Mapped, lines.Length * sizeof(LineVertex)));
 
+        var sprites = CollectionsMarshal.AsSpan(frame.Sprites);
+        EnsureCapacity(ref t.SpriteBuffer, (ulong)Math.Max(sprites.Length, 1) * (ulong)sizeof(Sprite), VkBufferUsageFlags.VertexBufferBit);
+        MemoryMarshal.AsBytes(sprites).CopyTo(new Span<byte>((void*)t.SpriteBuffer!.Mapped, sprites.Length * sizeof(Sprite)));
+
         Swapchain.ImageBarrier(cmd, t.Color, t.ColorLayout, VkImageLayout.ColorAttachmentOptimal,
             VkPipelineStageFlags.FragmentShaderBit, VkPipelineStageFlags.ColorAttachmentOutputBit,
             VkAccessFlags.ShaderReadBit, VkAccessFlags.ColorAttachmentWriteBit);
@@ -313,9 +347,11 @@ public sealed unsafe class SceneRenderer : IDisposable
             VkAccessFlags.DepthStencilAttachmentWriteBit, VkAccessFlags.DepthStencilAttachmentWriteBit,
             VkImageAspectFlags.DepthBit);
 
+        // La scène se dessine dans la cible HDR ; le post-traitement l'amènera dans la cible 8 bits.
+        _post.BeginScene(cmd, slot);
         var color = new VkRenderingAttachmentInfo
         {
-            ImageView = t.ColorView,
+            ImageView = _post.HdrView(slot),
             ImageLayout = VkImageLayout.ColorAttachmentOptimal,
             LoadOp = VkAttachmentLoadOp.Clear,
             StoreOp = VkAttachmentStoreOp.Store,
@@ -343,10 +379,17 @@ public sealed unsafe class SceneRenderer : IDisposable
         cmd.SetViewport(0, [new VkViewport { X = 0, Y = Size.Y, Width = Size.X, Height = -Size.Y, MaxDepth = 1 }]);
         cmd.SetScissor(0, [new VkRect2D(extent)]);
 
+        var forward = float3.NormalizeOrZero(frame.Camera.Target - frame.Camera.Position);
+        var right = float3.NormalizeOrZero(float3.Cross(forward, new float3(0, 1, 0)));
+        if (right.LengthSquared() < 0.5f)
+            right = new float3(1, 0, 0);
+        var up = float3.Cross(right, forward);
         var push = new PushConstants
         {
             ViewProjection = frame.Camera.View * frame.Camera.Projection(Size.X / (float)Size.Y),
             LightDirection = new float4(float3.Normalize(frame.LightDirection), 0),
+            CameraRight = new float4(right, 0),
+            CameraUp = new float4(up, 0),
         };
         var pushBytes = new ReadOnlySpan<byte>(&push, sizeof(PushConstants));
 
@@ -381,7 +424,18 @@ public sealed unsafe class SceneRenderer : IDisposable
             cmd.Draw(lines.Length, 1, 0, 0);
         }
 
+        if (sprites.Length > 0)
+        {
+            cmd.BindPipeline(VkPipelineBindPoint.Graphics, _spritePipeline);
+            cmd.PushConstants(_layout, VkShaderStageFlags.VertexBit | VkShaderStageFlags.FragmentBit, 0, pushBytes);
+            cmd.BindVertexBuffers(0, [t.SpriteBuffer.Buffer], [new ByteSize64(0)]);
+            cmd.Draw(6, sprites.Length, 0, 0);
+        }
+
         cmd.EndRendering();
+
+        // Bloom et tonemapping, vers la cible 8 bits (passée en ColorAttachmentOptimal au début).
+        _post.Apply(cmd, slot, t.ColorView, Size, frame.Post);
 
         Swapchain.ImageBarrier(cmd, t.Color, VkImageLayout.ColorAttachmentOptimal, VkImageLayout.ShaderReadOnlyOptimal,
             VkPipelineStageFlags.ColorAttachmentOutputBit, VkPipelineStageFlags.FragmentShaderBit,
@@ -436,15 +490,9 @@ public sealed unsafe class SceneRenderer : IDisposable
     }
 
     VkPipeline CreatePipeline(Compiler compiler, CompileOptions options, ReadOnlySpan<byte> vert, ReadOnlySpan<byte> frag,
-        VertexInput input, PtrOwner<VkPipelineInputAssemblyStateCreateInfo> assembly, bool depthWrite)
+        VertexInput input, PtrOwner<VkPipelineInputAssemblyStateCreateInfo> assembly, bool depthWrite, VkPipelineColorBlendAttachmentState blend)
     {
-        VkShaderModule Compile(ReadOnlySpan<byte> glsl, ShaderKind kind)
-        {
-            using var spirv = compiler.Compile(glsl, kind, "poiesis"u8, "main"u8, options);
-            if (spirv.GetCompilationStatus() != CompilationStatus.Success)
-                throw new InvalidOperationException($"Shader : {spirv.GetErrorMessage()}");
-            return ShaderModuleExtensions.FromSpirv(_vk.Device, new ReadOnlySpan<byte>(spirv.GetBytes(), (int)spirv.GetLength()), null);
-        }
+        VkShaderModule Compile(ReadOnlySpan<byte> glsl, ShaderKind kind) => CompileModule(compiler, options, glsl, kind);
 
         using var stages = new ShaderStages(_vk.Device,
         [
@@ -452,7 +500,8 @@ public sealed unsafe class SceneRenderer : IDisposable
             Presets.ShaderStage.Fragment(Compile(frag, ShaderKind.FragmentShader)),
         ], null);
 
-        var colorFormat = ColorFormat;
+        var colorFormat = PostProcess.HdrFormat;
+        var blendState = new VkPipelineColorBlendStateCreateInfo { AttachmentCount = 1, Attachments = &blend };
         var rendering = new VkPipelineRenderingCreateInfo
         {
             ColorAttachmentCount = 1,
@@ -480,7 +529,7 @@ public sealed unsafe class SceneRenderer : IDisposable
             RasterizationState = Presets.Rasterization.Fill.CullNone,
             MultisampleState = Presets.Multisample.None,
             DepthStencilState = &depth,
-            ColorBlendState = Presets.BlendState.BlendColorAlpha,
+            ColorBlendState = &blendState,
             DynamicState = &dynamic,
             Layout = _layout,
         }, null);
@@ -576,7 +625,7 @@ public sealed unsafe class SceneRenderer : IDisposable
         foreach (var t in _targets)
         {
             DestroyImages(t);
-            foreach (var b in new[] { t.InstanceBuffer, t.LineBuffer })
+            foreach (var b in new[] { t.InstanceBuffer, t.LineBuffer, t.SpriteBuffer })
                 if (b is not null)
                     _vk.Allocator.DestroyBuffer(b.Buffer, b.Allocation);
         }
@@ -592,6 +641,8 @@ public sealed unsafe class SceneRenderer : IDisposable
         _vk.Device.DestroySampler(TextureSampler, null);
         _vk.Device.DestroyPipeline(_meshPipeline, null);
         _vk.Device.DestroyPipeline(_linePipeline, null);
+        _vk.Device.DestroyPipeline(_spritePipeline, null);
+        _post.Dispose();
         _vk.Device.DestroyPipelineLayout(_layout, null);
         _vk.Device.DestroySampler(Sampler, null);
     }
