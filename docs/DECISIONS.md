@@ -109,6 +109,20 @@ Poiesis Brutal IDE est un éditeur de jeux à la manière de Godot ou Unity, con
 | Bilan de partie | **`IGameReporter`** facultatif : fini, vainqueur, temps, mesures nommées | Le moteur agrège sans connaître le jeu ; le jeu choisit ce qui compte. |
 | Hot reload pendant une série | **Reporté** tant que la série tourne | La série utilise le module : le décharger en pleine partie la casserait. |
 
+## Choix faits pendant le J3a (2026-11-24)
+
+| Sujet | Choix | Pourquoi |
+| --- | --- | --- |
+| Surcharges | **Calculées à l'enregistrement**, par comparaison avec la source rechargée | Pas d'état « surchargé » à tenir à jour à chaque modification : le fichier ne garde que les vraies différences, et une valeur remise comme la source cesse d'être une surcharge. |
+| Clés de surcharge | **Identifiant du nœud dans la source** (pas son chemin) | Renommer ou réordonner les nœuds de la source ne casse pas les surcharges. |
+| Identifiants des nœuds d'instance | **Dérivés** de l'instance et de la source | Deux instances d'une même scène ne partagent rien ; les identifiants sont stables sans être écrits. |
+| Structure d'une instance | **Verrouillée** (pas d'ajout ni de suppression d'enfant dans une instance) ; « Rendre local » pour en sortir | Comme Godot sans « enfants éditables » : simple, et suffisant pour les flottes types. |
+| Positions dans une instance | **Absolues**, sans transformation héritée du parent | Les nœuds d'Orionum portent des positions absolues ; une flotte type se déplace en surchargeant la position de sa racine. Une hiérarchie de transformations viendra avec l'édition avancée (J4, repère local ou global). |
+| Presse-papiers | **Celui du système**, en JSON | Coller entre scènes, et entre deux éditeurs ouverts ; le texte reste lisible. |
+| Fichiers de contenu | **Opérations directes sur le disque**, avec confirmation pour supprimer | Le projet est sous git : l'historique sert de corbeille. |
+| Nom de l'API d'extension | **`Poiesis.Editor.Api`**, référencée par `Poiesis.Engine.Hosting` | Tous les hôtes (éditeur, headless, joueur) doivent pouvoir charger les types du jeu, même sans éditeur. |
+| Nouveaux panneaux dans une ancienne disposition | **Ancrés à côté d'un voisin** à leur première apparition | Sinon ImGui les ouvre flottants et minuscules (constaté avec un `imgui.ini` d'avant le J3a). |
+
 ## Questions encore ouvertes
 
 1. **Audio** : FMOD (bindings BRUTAL, mais licence FMOD à payer et bibliothèques natives non fournies) ou SDL_mixer (choix du POC, gratuit, plus limité) ?

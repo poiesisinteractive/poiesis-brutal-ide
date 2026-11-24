@@ -28,13 +28,45 @@ public abstract class Node
 
     readonly List<Node> _children = new();
 
-    public T AddChild<T>(T child) where T : Node
+    /// <summary>
+    /// Chemin (relatif à <c>content/</c>) de la scène dont ce nœud est l'instance, ou <c>null</c>.
+    /// Ses enfants viennent alors de cette scène : on ne change pas leur structure, seulement leurs propriétés (surcharges).
+    /// </summary>
+    [JsonIgnore]
+    public string? InstanceOf { get; set; }
+
+    /// <summary>L'instance de scène la plus proche qui contient ce nœud (hors lui-même), ou <c>null</c>.</summary>
+    [JsonIgnore]
+    public Node? OwningInstance
+    {
+        get
+        {
+            for (var n = Parent; n is not null; n = n.Parent)
+                if (n.InstanceOf is not null)
+                    return n;
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Vrai si on peut ajouter, retirer ou déplacer des enfants de ce nœud : il n'est ni une instance,
+    /// ni dans une instance (la structure vient alors de la scène source).
+    /// </summary>
+    [JsonIgnore]
+    public bool HasEditableChildren => InstanceOf is null && OwningInstance is null;
+
+    public T AddChild<T>(T child) where T : Node => InsertChild(_children.Count, child);
+
+    /// <summary>Insère un enfant à une position donnée (bornée).</summary>
+    public T InsertChild<T>(int index, T child) where T : Node
     {
         child.Parent?._children.Remove(child);
         child.Parent = this;
-        _children.Add(child);
+        _children.Insert(Math.Clamp(index, 0, _children.Count), child);
         return child;
     }
+
+    public int IndexOf(Node child) => _children.IndexOf(child);
 
     public void RemoveChild(Node child)
     {

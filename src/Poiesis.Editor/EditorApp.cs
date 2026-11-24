@@ -28,6 +28,8 @@ sealed class EditorApp : IDisposable
     readonly ConsolePanel _console;
     readonly EntitiesPanel _entities;
     readonly DataPanel _data;
+    readonly ContentPanel _content;
+    readonly ExtensionHost _extensions;
     readonly AiPanel _ai;
     readonly DebugPanel _debug;
     readonly AnalysisPanel _analysis;
@@ -57,16 +59,20 @@ sealed class EditorApp : IDisposable
 
         _renderer = new SceneRenderer(vk, Swapchain.FramesInFlight);
         _viewport = new ViewportPanel(_session, _renderer, new ViewportTextures(imgui.Renderer, _renderer));
-        _scenePanel = new ScenePanel(_session);
+        _scenePanel = new ScenePanel(_session, _project, _log, RequestOpenScene);
         _properties = new PropertyEditor(_session, _project);
-        _inspector = new InspectorPanel(_session, _properties);
+        _inspector = new InspectorPanel(_session, _properties, RequestOpenScene, _project.ContentRoot);
         _console = new ConsolePanel(_log, _code);
         _entities = new EntitiesPanel(_session);
         _data = new DataPanel(_project, _log, ReloadModule);
+        _content = new ContentPanel(new ContentLibrary(_project), _session, _log, RequestOpenScene, _data.OpenFile);
         _ai = new AiPanel(_session, _project, _log, () => { _reloadAfterBuild = true; _build.Start(); });
         _debug = new DebugPanel(_session, _log);
         _analysis = new AnalysisPanel(_session, _project, _log, _ai);
         _viewport.DebugChannels = _debug.EnabledChannels;
+        _extensions = new ExtensionHost(_session, _log, _properties);
+        _viewport.Extensions = _extensions;
+        _inspector.Extensions = _extensions.DrawInspectors;
         _splash = new Splash(vk, imgui.Renderer, options.SplashSeconds);
         _script = new Queue<string>(options.Script);
 
@@ -196,6 +202,8 @@ sealed class EditorApp : IDisposable
         Shortcuts();
         _viewport.Draw(frame.Slot);
         _scenePanel.Draw();
+        DockLikeIfNew("Scène");
+        _content.Draw();
         _inspector.Draw();
         _console.Draw();
         _entities.Draw();
@@ -203,8 +211,69 @@ sealed class EditorApp : IDisposable
         _ai.Draw();
         _debug.Draw();
         _analysis.Draw();
+        _extensions.DrawPanels(() => DockLikeIfNew("Analyse"));
         if (_showAbout)
             About();
+        UnsavedChangesPopup();
+    }
+
+    /// <summary>
+    /// Un panneau apparu après l'enregistrement de la disposition (nouvelle version, extension du jeu) n'a pas de place :
+    /// ImGui l'ouvrirait flottant et minuscule. On l'ancre à côté de <paramref name="sibling"/> la première fois.
+    /// </summary>
+    static void DockLikeIfNew(string sibling)
+    {
+        var window = ImGui.Internal.FindWindowByName(sibling);
+        if (!window.IsNull() && window.DockId != default)
+            ImGui.SetNextWindowDockID(window.DockId, ImGuiCond.FirstUseEver);
+    }
+
+    string? _openAfterConfirm;
+
+    /// <summary>Ouvre une scène ; si la scène en cours a des modifications non enregistrées, demande d'abord.</summary>
+    void RequestOpenScene(string path)
+    {
+        if (_session.IsDirty)
+            _openAfterConfirm = path;
+        else
+            OpenScene(path);
+    }
+
+    void UnsavedChangesPopup()
+    {
+        if (_openAfterConfirm is null)
+            return;
+        if (!ImGui.IsPopupOpen("Modifications non enregistrées"u8))
+            ImGui.OpenPopup("Modifications non enregistrées"u8);
+        if (!ImGui.BeginPopupModal("Modifications non enregistrées"u8, ImGuiWindowFlags.AlwaysAutoResize))
+            return;
+        var name = _session.ScenePath is { } p ? Path.GetFileName(p) : "la scène";
+        ImGui.Text($"{name} a des modifications non enregistrées.");
+        ImGui.Text($"Ouvrir {Path.GetFileName(_openAfterConfirm)} ?");
+        if (_session.ScenePath is not null)
+        {
+            if (ImGui.Button("Enregistrer puis ouvrir"u8))
+            {
+                Save();
+                Close(open: true);
+            }
+            ImGui.SameLine();
+        }
+        if (ImGui.Button("Ouvrir sans enregistrer"u8))
+            Close(open: true);
+        ImGui.SameLine();
+        if (ImGui.Button("Annuler"u8))
+            Close(open: false);
+        ImGui.EndPopup();
+
+        void Close(bool open)
+        {
+            var path = _openAfterConfirm!;
+            _openAfterConfirm = null;
+            ImGui.CloseCurrentPopup();
+            if (open)
+                OpenScene(path);
+        }
     }
 
     /// <summary>Le viewport 3D, rendu hors écran avant la passe de la fenêtre.</summary>
@@ -229,7 +298,7 @@ sealed class EditorApp : IDisposable
             {
                 foreach (var f in Directory.EnumerateFiles(_project.ContentRoot, "*.scene.json", SearchOption.AllDirectories).Order(StringComparer.Ordinal))
                     if (ImGui.MenuItem(Path.GetRelativePath(_project.ContentRoot, f)))
-                        OpenScene(f);
+                        RequestOpenScene(f);
                 ImGui.EndMenu();
             }
             if (ImGui.MenuItem("Enregistrer"u8, "Ctrl+S"u8, false, _session.ScenePath is not null))
@@ -245,6 +314,14 @@ sealed class EditorApp : IDisposable
                 _session.History.Undo();
             if (ImGui.MenuItem(_session.History.NextRedo is { } r ? $"Rétablir « {r} »" : "Rétablir", "Ctrl+Y"u8, false, _session.History.CanRedo))
                 _session.History.Redo();
+            ImGui.Separator();
+            bool canEdit = _session.Play is null && _session.Selection is not null;
+            if (ImGui.MenuItem("Copier"u8, "Ctrl+C"u8, false, canEdit))
+                _scenePanel.CopySelection();
+            if (ImGui.MenuItem("Couper"u8, "Ctrl+X"u8, false, canEdit && _session.Selection!.Parent is { HasEditableChildren: true }))
+                _scenePanel.CutSelection();
+            if (ImGui.MenuItem("Coller"u8, "Ctrl+V"u8, false, _session.Play is null))
+                _scenePanel.PasteHere();
             ImGui.EndMenu();
         }
         if (ImGui.BeginMenu("Jeu"u8))
@@ -270,6 +347,11 @@ sealed class EditorApp : IDisposable
                 Play();
             if (ImGui.MenuItem("Arrêter"u8, "Maj+F5"u8, false, _session.PlayState != PlayState.Editing))
                 _session.Stop();
+            ImGui.EndMenu();
+        }
+        if (_extensions.HasMenus && ImGui.BeginMenu("Outils"u8))
+        {
+            _extensions.DrawMenu();
             ImGui.EndMenu();
         }
         if (ImGui.BeginMenu("Affichage"u8))
@@ -408,15 +490,19 @@ sealed class EditorApp : IDisposable
         ImGui.Internal.DockBuilderSetNodeSize(dockspace, ImGui.GetMainViewport().WorkSize);
         var center = dockspace;
         var left = ImGui.Internal.DockBuilderSplitNode(center, ImGuiDir.Left, 0.18f, out _, out center);
+        var leftBottom = ImGui.Internal.DockBuilderSplitNode(left, ImGuiDir.Down, 0.45f, out _, out left);
         var right = ImGui.Internal.DockBuilderSplitNode(center, ImGuiDir.Right, 0.28f, out _, out center);
         var bottom = ImGui.Internal.DockBuilderSplitNode(center, ImGuiDir.Down, 0.28f, out _, out center);
         var rightBottom = ImGui.Internal.DockBuilderSplitNode(right, ImGuiDir.Down, 0.5f, out _, out right);
         ImGui.Internal.DockBuilderDockWindow("Scène"u8, left);
+        ImGui.Internal.DockBuilderDockWindow("Contenu"u8, leftBottom);
         ImGui.Internal.DockBuilderDockWindow("Viewport"u8, center);
         ImGui.Internal.DockBuilderDockWindow("Inspecteur"u8, right);
         ImGui.Internal.DockBuilderDockWindow("IA"u8, rightBottom);
         ImGui.Internal.DockBuilderDockWindow("Débogage"u8, rightBottom);
         ImGui.Internal.DockBuilderDockWindow("Analyse"u8, rightBottom);
+        foreach (var panel in _extensions.Panels)
+            ImGui.Internal.DockBuilderDockWindow(panel.Title, rightBottom);
         ImGui.Internal.DockBuilderDockWindow("Console"u8, bottom);
         ImGui.Internal.DockBuilderDockWindow("Entités"u8, bottom);
         ImGui.Internal.DockBuilderDockWindow("Données"u8, bottom);
@@ -479,6 +565,35 @@ sealed class EditorApp : IDisposable
                 case "export": _exporter.Start(arg == "windows" ? ExportTarget.WindowsX64 : ExportTarget.LinuxX64); break;
                 case "wait": _scriptWait = int.Parse(arg); return;
                 case "focus": ImGui.SetWindowFocus(arg); break;
+                case "tool":
+                    if (!_extensions.RunMenu(arg))
+                        _log.Warn("script", $"Commande d'extension inconnue : {arg}");
+                    break;
+                case "open": OpenScene(Path.Combine(_project.ContentRoot, arg)); break;
+                case "save": Save(); break;
+                case "copy": _scenePanel.CopySelection(); break;
+                case "paste": _scenePanel.PasteHere(); break;
+                case "instantiate":
+                    try
+                    {
+                        _session.InstantiateScene(arg, _session.Selection is { HasEditableChildren: true } t ? t : _session.Scene);
+                    }
+                    catch (Exception ex)
+                    {
+                        _log.Error("script", ex.Message);
+                    }
+                    break;
+                case "move":
+                    var parts = arg.Split('>', 2);
+                    _content.Move(parts[0], parts[1]);
+                    break;
+                case "set":
+                    // set:Propriété=valeur (JSON) sur la sélection, comme une modification de l'inspecteur.
+                    var kv = arg.Split('=', 2);
+                    if (_session.Selection is { } target && target.GetType().GetProperty(kv[0]) is { } prop)
+                        _session.History.Execute(new SetPropertyCommand(target, prop,
+                            Poiesis.Engine.Scene.ValueCodec.FromJson(System.Text.Json.Nodes.JsonNode.Parse(kv[1])!, prop.PropertyType)));
+                    break;
                 default: _log.Warn("script", $"Commande inconnue : {cmd}"); break;
             }
         }

@@ -66,7 +66,7 @@ void Run()
     var registry = new NodeTypeRegistry();
     using var host = new GameModuleHost(registry, Path.Combine(root, manifest.Content));
     var module = host.Load(Path.Combine(root, manifest.Assembly));
-    var scene = new SceneSerializer(registry).Read(File.ReadAllText(Path.Combine(root, manifest.Scene)));
+    var scene = new SceneSerializer(registry, Path.Combine(root, manifest.Content)).Read(File.ReadAllText(Path.Combine(root, manifest.Scene)));
     var session = new PlaySession(scene, module);
     if (advance > 0)
         session.Run((int)Math.Round(advance / session.Clock.StepSeconds));

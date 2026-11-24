@@ -113,8 +113,9 @@ public sealed class GameModuleHost(NodeTypeRegistry nodeTypes, string contentRoo
 
         protected override Assembly? Load(AssemblyName name)
         {
-            // Moteur et BRUTAL : toujours partagés avec l'éditeur.
-            if (name.Name is { } n && (n.StartsWith("Poiesis.Engine", StringComparison.Ordinal) || n.StartsWith("Brutal", StringComparison.Ordinal)))
+            // Moteur, API d'extension de l'éditeur et BRUTAL : toujours partagés avec l'hôte.
+            if (name.Name is { } n && (n.StartsWith("Poiesis.Engine", StringComparison.Ordinal) || n == "Poiesis.Editor.Api"
+                || n.StartsWith("Brutal", StringComparison.Ordinal)))
                 return null;
             if (Default.Assemblies.Any(a => a.GetName().Name == name.Name))
                 return null;

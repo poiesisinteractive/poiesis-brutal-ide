@@ -34,7 +34,7 @@ public class GameModuleTests
         var registry = new NodeTypeRegistry();
         using var host = new GameModuleHost(registry, ContentRoot);
         var module = host.Load(GameDll());
-        var scene = new SceneSerializer(registry).Read(File.ReadAllText(Scene("capital-battle")));
+        var scene = new SceneSerializer(registry, GameModuleTests.ContentRoot).Read(File.ReadAllText(Scene("capital-battle")));
 
         var session = new PlaySession(scene, module);
         Assert.Equal(25 * 2 + 2, session.World.EntityCount);

@@ -125,6 +125,47 @@ Poiesis.Engine.Hosting ── Series (N graines, IGameReporter) ◄── Poiesi
 - **Séries** : `Series.SetSeed` change toute propriété entière `Seed` de la scène (convention, comme `Position` et `Heading`). Chaque partie tourne jusqu'à `Finished` ou une durée maximale. `SeriesResult` agrège les victoires et les mesures, et `Summary()` les met en texte pour l'IA.
 - **Analyse par l'IA** : une requête simple, sans outils, au fournisseur choisi dans le panneau IA. Elle contient les résultats, la question et toutes les données du jeu (`content/**/*.json` hors scènes), pour que les propositions désignent des fichiers et des champs. La réponse peut devenir une demande de feature, qui passe alors par le workflow habituel : branche, garde-fous, diff.
 
+## Réutilisation et extensions (J3a)
+
+### Scènes imbriquées
+
+Un nœud peut être l'instance d'une autre scène. Dans le fichier, l'instance ne garde que le chemin de sa source et ce qui en diffère :
+
+```json
+{
+  "instance": "fleets/coalition.line.scene.json",
+  "id": "ee5661f2-…",
+  "name": "Coalition",
+  "overrides": { "<id du nœud dans la source>": { "name": "…", "props": { "position": [0, 0, -60000] } } }
+}
+```
+
+- **Lecture** : `SceneSerializer` (qui connaît désormais `content/`) charge la source, applique les surcharges et marque la racine (`Node.InstanceOf`). Les autres nœuds reçoivent un identifiant dérivé de celui de l'instance et du leur dans la source (`InstanceNodeId`, MD5 des deux) : deux instances ne partagent aucun identifiant, et un nœud garde le sien d'un chargement à l'autre (sélection, entités, diffs).
+- **Écriture** : on recharge la source et on compare, propriété par propriété, en JSON. Modifier la source modifie donc toutes les instances, sauf ce qu'elles surchargent. Une surcharge dont le nœud a disparu de la source est ignorée.
+- **Structure verrouillée** : on ne change pas les enfants d'une instance (`Node.HasEditableChildren`), seulement leurs propriétés. « Rendre local » détache l'instance.
+- **Boucles** : une scène qui s'instancierait elle-même, directement ou non, est refusée à la lecture, et l'éditeur refuse de l'instancier ou de la coller (`DependsOn`).
+- **Cuisson** : une instance est un arbre de nœuds ordinaire une fois lue. Le moteur, le joueur et le headless n'ont rien de plus à faire.
+
+### Contenu et presse-papiers
+
+- **`ContentLibrary`** (Editor.Core) : arborescence de `content/`, création, duplication (avec de nouveaux identifiants pour une scène), suppression, déplacement. Un déplacement réécrit les champs `instance` de toutes les scènes et la scène de départ du projet. Les données sont désignées par leur `id`, pas par leur fichier : les renommer ne casse rien.
+- **Copier-coller** : le presse-papiers du système reçoit `{"kind": "poiesis.nodes", "nodes": [...]}`. Coller régénère les identifiants (pas les clés de surcharge) et place les nœuds après la sélection, ou dans le premier ancêtre dont on peut changer les enfants.
+
+### API d'extension
+
+```text
+Orionum.Game.dll ──▶ Poiesis.Editor.Api (IEditorExtension, EditorRegistry, IEditorContext, IGizmoContext)
+                         ▲ partagée avec l'hôte (comme Poiesis.Engine.* et Brutal.*)
+Poiesis.Editor : ExtensionHost ── trouve les IEditorExtension au chargement du module, les oublie avant le déchargement
+```
+
+- **Enregistrement** : `Panel(titre, draw)`, `Inspector<TNode>(titre, draw)`, `Gizmo<TNode>(draw)`, `MenuItem("Menu/Commande", run)`. On dessine avec Dear ImGui, comme l'éditeur.
+- **Contexte** : scène, sélection, monde d'aperçu (avec les ressources du jeu) ou de la partie, et modifications annulables : `Set`, `Rename`, `Add`, `Remove`, `Group` (une commande pour plusieurs modifications), `PropertyField` (le widget de l'inspecteur).
+- **Gizmos** : un `DrawContext` (lignes, cercles, étiquettes) et des poignées (`Handle`) qu'on fait glisser dans le plan face à la caméra. Pendant le glissement, `Set` s'applique en direct ; au relâchement, tout devient une seule commande. Les poignées passent avant la caméra et la sélection.
+- **Rechargement à chaud** : `GameModuleHost.Unloading` vide le registre, les erreurs mémorisées et le glissement en cours, avant le déchargement. Aucune référence vers un délégué du jeu ne survit (vérifié : génération 2, ancienne DLL déchargée).
+- **Erreurs** : une extension qui lève une exception est coupée jusqu'au prochain rechargement, et la console dit laquelle.
+- **Livraison** : le jeu exporté référence l'API ; le joueur la livre, sans s'en servir. Les bibliothèques natives d'ImGui ne sont pas copiées à côté du jeu.
+
 ## Rendu (Poiesis.Render)
 
 - **`VulkanContext`** : instance, surface, device (GPU dédié de préférence, sinon intégré, sinon logiciel), file unique dessin et présentation, allocateur VMA, envois ponctuels (`Immediate`).

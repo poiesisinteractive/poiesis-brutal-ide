@@ -91,20 +91,57 @@ sealed class PropertyEditor(EditorSession session, ProjectConfig project)
 
     public void Draw(Node node)
     {
+        // Dans une instance : la valeur de la scène source, pour montrer et rétablir les surcharges.
+        var baseline = session.InstanceBaseline(node) is { } b && b.GetType() == node.GetType() ? b : null;
+
         string name = node.Name;
+        bool nameOverridden = baseline is not null && node.InstanceOf is null && baseline.Name != node.Name;
+        if (nameOverridden)
+            ImGui.PushStyleColor(ImGuiCol.Text, EditorTheme.Accent);
         if (Widgets.TextField("Nom", $"name-{node.Id}", ref name) && name != node.Name)
             session.History.Execute(new RenameCommand(node, name));
+        if (nameOverridden)
+        {
+            ImGui.PopStyleColor();
+            if (ImGui.BeginPopupContextItem("revert-name"u8))
+            {
+                if (ImGui.MenuItem($"Rétablir « {baseline!.Name} »"))
+                    session.History.Execute(new RenameCommand(node, baseline.Name));
+                ImGui.EndPopup();
+            }
+        }
 
         ImGui.Separator();
         foreach (var p in SceneSerializer.EditableProperties(node.GetType()))
-        {
-            ImGui.PushID(p.Name);
-            DrawProperty(node, p);
-            if (p.GetCustomAttribute<System.ComponentModel.DescriptionAttribute>() is { } desc)
-                Widgets.HelpMarker(desc.Description);
-            ImGui.PopID();
-        }
+            DrawPropertyRow(node, p, baseline);
     }
+
+    /// <summary>Une propriété avec son widget, sa marque de surcharge et sa bulle d'aide.</summary>
+    public void DrawPropertyRow(Node node, PropertyInfo p, Node? baseline)
+    {
+        ImGui.PushID(p.Name);
+        bool overridden = baseline is not null && !SameValue(p, node, baseline);
+        if (overridden)
+            ImGui.PushStyleColor(ImGuiCol.Text, EditorTheme.Accent);
+        DrawProperty(node, p);
+        if (overridden)
+        {
+            ImGui.PopStyleColor();
+            if (ImGui.BeginPopupContextItem("revert"u8))
+            {
+                if (ImGui.MenuItem("Rétablir la valeur de la scène source"u8))
+                    session.History.Execute(new SetPropertyCommand(node, p, p.GetValue(baseline)));
+                ImGui.EndPopup();
+            }
+        }
+        if (p.GetCustomAttribute<System.ComponentModel.DescriptionAttribute>() is { } desc)
+            Widgets.HelpMarker(desc.Description);
+        ImGui.PopID();
+    }
+
+    /// <summary>Vrai si la propriété a la même valeur sur les deux nœuds (comparée en JSON, comme à l'enregistrement).</summary>
+    public static bool SameValue(PropertyInfo p, Node a, Node b) =>
+        JsonNode.DeepEquals(ValueCodec.ToJson(p.GetValue(a), p.PropertyType), ValueCodec.ToJson(p.GetValue(b), p.PropertyType));
 
     void DrawProperty(Node node, PropertyInfo p)
     {
@@ -128,7 +165,7 @@ sealed class PropertyEditor(EditorSession session, ProjectConfig project)
         else if (type == typeof(float3))
         {
             var v = (float3)value!;
-            bool changed = ImGui.DragFloat3(label, ref v, range?.Speed ?? 10f, 0, 0, "%.0f"u8);
+            bool changed = ImGui.DragFloat3(label, ref v, range?.Speed ?? (MathF.Max(MathF.Abs(v.X), MathF.Max(MathF.Abs(v.Y), MathF.Abs(v.Z))) < 10 ? 0.01f : 10f), 0, 0, "%.6g"u8);
             Live(node, p, v, changed);
         }
         else if (type == typeof(bool))

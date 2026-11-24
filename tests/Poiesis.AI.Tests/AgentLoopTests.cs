@@ -120,14 +120,14 @@ public class OpenAiCompatibleProviderTests
               ] } }],
               "usage": { "prompt_tokens": 12, "completion_tokens": 3 }
             }
-            """)!.AsObject();
+            """u8)!.AsObject();
 
         var response = OpenAiCompatibleProvider.ParseResponse(root, "gpt");
 
         Assert.Equal(StopReason.ToolUse, response.StopReason);
         var calls = response.Message.Parts.Cast<ToolCallPart>().ToList();
         Assert.Equal(2, calls.Count);
-        Assert.True(calls[1].Arguments.TryGetProperty("_invalid_json", out _));
+        Assert.True(calls[1].Arguments.TryGetProperty("_invalid_json"u8, out _));
         Assert.Equal(new Usage(12, 3), response.Usage);
     }
 }

@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- L'API d'extension de l'éditeur : ce que le jeu référence pour ajouter ses panneaux, inspecteurs, gizmos et menus.
+       Légère (nœuds, dessin de débogage, Dear ImGui) : le joueur la livre aussi, sans s'en servir. -->
+  <PropertyGroup>
+    <RootNamespace>Poiesis.Editor.Api</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Poiesis.Engine.Scene\Poiesis.Engine.Scene.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Ahwoo.Brutal.ImGui" />
+  </ItemGroup>
+
+</Project>

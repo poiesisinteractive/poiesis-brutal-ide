@@ -8,6 +8,8 @@
   <ItemGroup>
     <ProjectReference Include="..\Poiesis.Engine.Core\Poiesis.Engine.Core.csproj" />
     <ProjectReference Include="..\Poiesis.Engine.Scene\Poiesis.Engine.Scene.csproj" />
+    <!-- Les jeux référencent l'API d'extension de l'éditeur : tout hôte doit pouvoir charger ses types (éditeur, headless, joueur). -->
+    <ProjectReference Include="..\Poiesis.Editor.Api\Poiesis.Editor.Api.csproj" />
   </ItemGroup>
 
 </Project>

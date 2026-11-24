@@ -130,16 +130,35 @@ Critère : *un joueur lance Orionum exporté, sans l'éditeur ; une erreur de bu
 
 Critère : *on conçoit un croiseur dans un concepteur de coques propre à Orionum, on en fait une flotte type réutilisable, on l'instancie dans deux scénarios avec des surcharges, et on la retrouve dans le navigateur de contenu.*
 
+Découpé en deux, comme le J2 :
+
+## J3a : l'ossature de la réutilisation ✅
+
+Critère : *la ligne de la Coalition est une scène, instanciée dans les deux scénarios avec des surcharges ; on la retrouve et on la déplace dans le navigateur de contenu sans rien casser ; on copie une flotte d'un scénario à l'autre ; Orionum ajoute ses propres outils à l'éditeur, rechargés à chaud.*
+
+| Élément | État |
+| --- | --- |
+| **Scènes imbriquées** : `{"instance": "…", "overrides": {…}}`, seules les différences avec la source sont enregistrées ; identifiants dérivés (deux instances ne partagent rien) ; instances dans des instances ; boucles refusées | ✅ |
+| Éditeur : instances en couleur dans l'arbre, structure verrouillée, surcharges en couleur dans l'inspecteur, rétablir une valeur ou tout, ouvrir la source, rendre local, **enregistrer une branche comme scène** | ✅ |
+| Orionum : `fleets/coalition.line`, `fleets/clans.line` et `systems/wolf-359` instanciés par les deux scénarios (même bataille qu'avant : bilan identique après 300 s simulées) | ✅ |
+| **Copier-coller** (Ctrl+C, X, V) par le presse-papiers du système, entre scènes, nouveaux identifiants, une seule annulation | ✅ |
+| **Navigateur de contenu** : arborescence, ouvrir (scène, ou données dans le panneau Données), créer dossier et scène, dupliquer, renommer, déplacer par glisser-déposer, supprimer avec la liste des scènes touchées ; références réécrites (scènes et scène de départ du projet) | ✅ |
+| **API d'extension** (`Poiesis.Editor.Api`) : panneaux, sections d'inspecteur, gizmos avec poignées, commandes du menu Outils ; modifications annulables, glissement d'une poignée = une seule commande ; extension en erreur désactivée jusqu'au rechargement | ✅ |
+| Première extension d'Orionum : Ordre de bataille, composition des flottes, rayon des astres, fin de croisière, aligner les flottes | ✅ vérifiée au rechargement à chaud (génération 2, ancienne DLL déchargée) |
+
+**Ce que l'ordre de bataille montre déjà** : sur le papier, les Clans ont plus de structure (×1,33) et plus de feu (×1,36) que la Coalition, qui gagne pourtant 100 % des batailles (J2b). L'écart vient donc d'ailleurs : boucliers, portées, manœuvre. C'est une piste pour l'équilibrage.
+
+Reporté au J3b : vignettes rendues hors écran dans le navigateur, filtres.
+
+## J3b : le contenu
+
 Jeu :
-- générateur de coques paramétré (proues, superstructures, placement des tourelles) ;
+- **concepteur de coques**, extension d'Orionum : générateur paramétré (proues, superstructures, placement des tourelles) ;
 - import glTF (Brutal.Gltf, MeshOptimizer) et textures KTX2 en alternative.
 
 Éditeur :
-- **API d'extension** : le jeu ajoute ses panneaux, inspecteurs, gizmos et dessins de débogage, rechargés à chaud avec sa DLL. Le concepteur de coques est la première extension d'Orionum ;
-- **scènes imbriquées**, à la Godot : toute scène s'instancie dans une autre, avec des surcharges de propriétés enregistrées dans l'instance ;
-- **navigateur de contenu** : arborescence, vignettes rendues hors écran, création, renommage, déplacement avec mise à jour des références ;
-- **copier-coller** de nœuds, entre scènes comprises ;
-- **IA qui écrit des outils d'éditeur** : une extension générée dans la DLL du jeu, par le workflow feature.
+- **vignettes** rendues hors écran dans le navigateur de contenu ;
+- **IA qui écrit des outils d'éditeur** : une extension générée dans la DLL du jeu, par le workflow feature, avec l'API d'extension dans son contexte.
 
 ## J4 : effets, son, UI de jeu, et édition de scène avancée
 

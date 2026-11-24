@@ -12,10 +12,19 @@ BRUTAL fournit l'interop, la mémoire, les maths, les jobs et les bindings natif
 
 ## État
 
-Jalon 2b terminé, 39 tests passent. On peut :
-- exporter le jeu pour Windows ou Linux, autonome, avec splash et crédits BRUTAL ;
-- ouvrir les erreurs de build et les tests en échec dans VS Code ;
-- jouer des séries de batailles et les faire analyser par l'IA.
+Jalon 3a terminé, 54 tests passent. On peut :
+- **réutiliser des scènes**, à la Godot : une flotte type ou un système stellaire s'instancie dans plusieurs scénarios, chaque instance ne gardant que ses différences (surcharges) ;
+- faire d'une branche de la scène une scène réutilisable (clic droit > Enregistrer comme scène) ;
+- **copier-coller** des nœuds, d'une scène à l'autre ;
+- parcourir `content/` dans le **navigateur de contenu** : ouvrir, créer, renommer, déplacer. Les scènes qui instancient un fichier déplacé sont mises à jour ;
+- étendre l'éditeur depuis le jeu, par l'**API d'extension** : Orionum ajoute un panneau « Ordre de bataille », un inspecteur de composition des flottes, un gizmo de rayon des astres et une commande « Aligner les flottes ».
+
+![Scènes imbriquées : la flotte de la Coalition est une instance de fleets/coalition.line.scene.json, sa position est surchargée ; à droite, le panneau du jeu](docs/images/nested-scenes.png)
+
+Au jalon 2b :
+- export du jeu pour Windows ou Linux, autonome, avec splash et crédits BRUTAL ;
+- erreurs de build et tests en échec ouverts dans VS Code ;
+- séries de batailles analysées par l'IA.
 
 Le reste ci-dessous date du jalon 2a.
 
@@ -75,6 +84,12 @@ Le dossier passé en argument est un projet de jeu : il contient un `poiesis.pro
 | Ouvrir une erreur de build | clic sur la ligne dans la console |
 | Exporter le jeu | Jeu > Exporter le jeu > Windows x64 ou Linux x64 (dans `<projet>/builds/`) |
 | Analyser l'équilibrage | panneau Analyse : jouer une série, puis demander à l'IA |
+| Copier, couper, coller des nœuds | Ctrl+C, Ctrl+X, Ctrl+V (entre scènes aussi) |
+| Instancier une scène | la glisser du panneau Contenu sur un nœud de l'arbre, ou clic droit > Instancier une scène |
+| Faire d'une branche une scène | clic droit sur le nœud > Enregistrer comme scène |
+| Rétablir une surcharge | clic droit sur la valeur (en couleur) dans l'inspecteur |
+| Déplacer un fichier de contenu | le glisser sur un dossier du panneau Contenu (références mises à jour) |
+| Outils du jeu | menu Outils, et les panneaux et gizmos fournis par le jeu |
 
 L'éditeur de code se règle dans `<projet>/.poiesis/settings.json` (VS Code par défaut) :
 
@@ -119,7 +134,7 @@ dotnet run --project src/Poiesis.Headless -c Release -- games/Orionum/src/Orionu
 
 ### Vérifier l'éditeur sans écran
 
-L'éditeur tourne aussi sans GPU, avec le Vulkan logiciel de Mesa (lavapipe), et sans écran, sous Xvfb. C'est ainsi qu'il est vérifié dans le cloud et qu'il pourra l'être en CI. `--capture` enregistre une image puis quitte. `--do` joue un petit script : `select:<nom>`, `frame`, `play`, `pause`, `step:<n>`, `advance:<secondes>`, `snapshot`, `restore`, `entity:<slot ou nom de flotte>`, `channel:<canal>`, `about`, `build`, `wait:<images>`, `focus:<panneau>`, `tests[:filtre]`, `open-first-location`, `export:<windows|linux>`, `series:<n>`, `provider:<nom>`, `ask:<question>`.
+L'éditeur tourne aussi sans GPU, avec le Vulkan logiciel de Mesa (lavapipe), et sans écran, sous Xvfb. C'est ainsi qu'il est vérifié dans le cloud et qu'il pourra l'être en CI. `--capture` enregistre une image puis quitte. `--do` joue un petit script : `select:<nom>`, `frame`, `play`, `pause`, `step:<n>`, `advance:<secondes>`, `snapshot`, `restore`, `entity:<slot ou nom de flotte>`, `channel:<canal>`, `about`, `build`, `wait:<images>`, `focus:<panneau>`, `open:<scène>`, `save`, `copy`, `paste`, `instantiate:<scène>`, `move:<de>><vers>`, `set:<Propriété>=<json>`, `tool:<commande>`, `tests[:filtre]`, `open-first-location`, `export:<windows|linux>`, `series:<n>`, `provider:<nom>`, `ask:<question>`.
 
 ```sh
 sudo apt-get install -y xvfb mesa-vulkan-drivers libvulkan1

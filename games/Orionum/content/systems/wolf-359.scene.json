@@ -1,0 +1,43 @@
+{
+  "type": "scene",
+  "id": "2e0644ff-adef-5ab9-99d3-bd7a9be8e290",
+  "name": "Système de Wolf 359",
+  "children": [
+    {
+      "type": "orionum.body",
+      "id": "a1af8ca3-4509-5c34-afba-390cf94673a8",
+      "name": "Wolf 359 b",
+      "props": {
+        "position": [
+          -160000,
+          -40000,
+          30000
+        ],
+        "radius": 45000,
+        "color": [
+          0.55,
+          0.42,
+          0.36
+        ]
+      }
+    },
+    {
+      "type": "orionum.body",
+      "id": "f0df30c5-ecfc-513c-ae26-f795615e8ef8",
+      "name": "Lune",
+      "props": {
+        "position": [
+          110000,
+          25000,
+          -60000
+        ],
+        "radius": 9000,
+        "color": [
+          0.5,
+          0.5,
+          0.52
+        ]
+      }
+    }
+  ]
+}

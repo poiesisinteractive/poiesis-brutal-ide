@@ -16,7 +16,7 @@ public sealed class EditorSession : IDisposable
     {
         ProjectRoot = projectRoot;
         NodeTypes = new NodeTypeRegistry();
-        Serializer = new SceneSerializer(NodeTypes);
+        Serializer = new SceneSerializer(NodeTypes, Path.Combine(projectRoot, "content"));
         Modules = new GameModuleHost(NodeTypes, Path.Combine(projectRoot, "content"));
         Scene = new SceneRoot { Name = "Nouvelle scène" };
         History.Changed += Touch;
@@ -71,14 +71,163 @@ public sealed class EditorSession : IDisposable
 
     public Node? FindNode(Guid id) => Scene.DescendantsAndSelf().FirstOrDefault(n => n.Id == id);
 
-    /// <summary>Copie profonde d'un nœud et de ses enfants, avec de nouveaux identifiants.</summary>
+    /// <summary>Copie profonde d'un nœud et de ses enfants, avec de nouveaux identifiants. Une instance reste une instance.</summary>
     public Node CloneNode(Node node)
     {
-        var copy = Serializer.Read(Serializer.Write(node));
-        foreach (var n in copy.DescendantsAndSelf())
-            n.Id = Guid.NewGuid();
+        var json = Serializer.ToJson(node);
+        SceneSerializer.RegenerateIds(json);
+        var copy = Serializer.FromJson(json, ScenePath);
         copy.Name = node.Name + " (copie)";
         return copy;
+    }
+
+    /// <summary>
+    /// Le nœud tel qu'il est dans sa scène source, sans les surcharges de la scène ouverte, ou <c>null</c>
+    /// s'il n'appartient à aucune instance. Sert à montrer et à rétablir les surcharges dans l'inspecteur.
+    /// </summary>
+    public Node? InstanceBaseline(Node node)
+    {
+        Node? outer = null;
+        for (var n = node; n is not null; n = n.Parent)
+            if (n.InstanceOf is not null)
+                outer = n;
+        if (outer is null)
+            return null;
+
+        var now = DateTime.UtcNow;
+        if (!_baselines.TryGetValue(outer.Id, out var cached) || cached.Path != outer.InstanceOf
+            || cached.Generation != Modules.Generation || now - cached.At > TimeSpan.FromSeconds(1))
+        {
+            Dictionary<Guid, Node> nodes;
+            try
+            {
+                nodes = Serializer.Instantiate(outer.InstanceOf!, outer.Id).DescendantsAndSelf().ToDictionary(n => n.Id);
+            }
+            catch (Exception ex) when (ex is IOException or System.Text.Json.JsonException or InvalidDataException or KeyNotFoundException)
+            {
+                nodes = new();
+            }
+            _baselines[outer.Id] = cached = (outer.InstanceOf!, Modules.Generation, now, nodes);
+        }
+        return cached.Nodes.GetValueOrDefault(node.Id);
+    }
+
+    readonly Dictionary<Guid, (string Path, int Generation, DateTime At, Dictionary<Guid, Node> Nodes)> _baselines = new();
+
+    /// <summary>
+    /// Fait d'une branche de la scène une scène réutilisable : l'écrit dans <paramref name="relativePath"/> (relatif à
+    /// <c>content/</c>), puis la remplace par une instance de ce fichier. Le remplacement s'annule, pas l'écriture du fichier.
+    /// </summary>
+    public Node SaveBranchAsScene(Node node, string relativePath)
+    {
+        if (node.Parent is not { HasEditableChildren: true })
+            throw new InvalidOperationException("Seul un nœud ordinaire de la scène (ni la racine, ni un nœud d'instance) devient une scène.");
+        relativePath = relativePath.Replace('\\', '/');
+        var file = Path.Combine(Serializer.ContentRoot!, relativePath);
+        if (File.Exists(file))
+            throw new IOException($"{relativePath} existe déjà");
+        Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+        File.WriteAllText(file, Serializer.Write(node) + "\n");
+
+        var instance = Serializer.Instantiate(relativePath, node.Id, ScenePath);
+        instance.Name = node.Name;
+        History.Execute(new ReplaceNodeCommand(node, instance, $"Enregistrer {node.Name} comme scène"));
+        if (Selection == node)
+            Selection = instance;
+        return instance;
+    }
+
+    /// <summary>
+    /// Instancie la scène <paramref name="relativePath"/> sous <paramref name="parent"/>. Refuse une scène qui contient
+    /// déjà la scène ouverte (boucle).
+    /// </summary>
+    public Node InstantiateScene(string relativePath, Node parent)
+    {
+        if (!parent.HasEditableChildren)
+            throw new InvalidOperationException($"On n'ajoute pas d'enfant à {parent.Name} : il vient d'une scène instanciée.");
+        if (ScenePath is not null && Serializer.DependsOn(relativePath, Serializer.RelativePath(ScenePath)))
+            throw new InvalidDataException($"{relativePath} contient déjà la scène ouverte : l'instancier ici ferait une boucle.");
+        var instance = Serializer.Instantiate(relativePath, Guid.NewGuid(), ScenePath);
+        History.Execute(new AddNodeCommand(parent, instance));
+        Selection = instance;
+        return instance;
+    }
+
+    /// <summary>
+    /// Après le déplacement d'un fichier ou d'un dossier de contenu : met à jour les instances de la scène ouverte
+    /// et son propre chemin. Le fichier sur disque a déjà été réécrit par <see cref="ContentLibrary.Move"/>.
+    /// </summary>
+    public void RemapContent(string from, string to)
+    {
+        foreach (var n in Scene.DescendantsAndSelf())
+            if (n.InstanceOf is { } path && ContentLibrary.Remap(path, from, to) is { } moved)
+                n.InstanceOf = moved;
+        if (ScenePath is { } scene && ContentLibrary.Remap(Serializer.RelativePath(scene), from, to) is { } movedScene)
+            ScenePath = Path.GetFullPath(Path.Combine(Serializer.ContentRoot!, movedScene));
+        _baselines.Clear();
+    }
+
+    // ----- Copier-coller -----------------------------------------------------------------------------
+
+    const string ClipboardKind = "poiesis.nodes";
+
+    /// <summary>Le texte à mettre dans le presse-papiers pour copier un nœud et ses enfants (une instance reste une instance).</summary>
+    public string CopyNode(Node node)
+    {
+        var doc = new System.Text.Json.Nodes.JsonObject
+        {
+            ["kind"] = ClipboardKind,
+            ["nodes"] = new System.Text.Json.Nodes.JsonArray(Serializer.ToJson(node)),
+        };
+        return SceneSerializer.ToJsonString(doc);
+    }
+
+    /// <summary>Vrai si le texte vient de <see cref="CopyNode"/> (d'ici ou d'un autre éditeur).</summary>
+    public static bool IsNodeClipboard(string? text) =>
+        text is not null && text.TrimStart().StartsWith('{') && text.Contains(ClipboardKind, StringComparison.Ordinal);
+
+    /// <summary>
+    /// Colle des nœuds copiés, avec de nouveaux identifiants : après <paramref name="target"/> parmi ses frères, ou dans
+    /// la scène s'il n'y a pas de cible. Si la cible vient d'une instance, dans le premier ancêtre dont on peut changer
+    /// les enfants. Une seule commande annulable. Rend les nœuds collés.
+    /// </summary>
+    public IReadOnlyList<Node> Paste(string text, Node? target)
+    {
+        var doc = System.Text.Json.Nodes.JsonNode.Parse(text) as System.Text.Json.Nodes.JsonObject;
+        if (doc?["kind"]?.GetValue<string>() != ClipboardKind || doc["nodes"] is not System.Text.Json.Nodes.JsonArray items)
+            throw new InvalidDataException("Le presse-papiers ne contient pas de nœuds Poiesis.");
+
+        Node parent;
+        int index;
+        if (target is null || target == Scene)
+            (parent, index) = (Scene, Scene.Children.Count);
+        else
+        {
+            var anchor = target;
+            while (anchor.Parent is { HasEditableChildren: false } p)
+                anchor = p;
+            parent = anchor.Parent ?? Scene;
+            index = parent.IndexOf(anchor) + 1;
+        }
+
+        var current = ScenePath is null ? null : Serializer.RelativePath(ScenePath);
+        var commands = new List<IEditorCommand>();
+        var pasted = new List<Node>();
+        foreach (var item in items.OfType<System.Text.Json.Nodes.JsonObject>())
+        {
+            var json = (System.Text.Json.Nodes.JsonObject)item.DeepClone();
+            SceneSerializer.RegenerateIds(json);
+            var node = Serializer.FromJson(json, ScenePath);
+            if (current is not null && SceneSerializer.InstancedScenes(node).Any(path => Serializer.DependsOn(path, current)))
+                throw new InvalidDataException($"{node.Name} instancie la scène ouverte : le coller ici ferait une boucle.");
+            commands.Add(new InsertNodeCommand(parent, index + pasted.Count, node));
+            pasted.Add(node);
+        }
+        if (pasted.Count == 0)
+            return pasted;
+        History.Execute(new CompositeCommand(pasted.Count == 1 ? $"Coller {pasted[0].Name}" : $"Coller {pasted.Count} nœuds", commands));
+        Selection = pasted[^1];
+        return pasted;
     }
 
     public string ProjectRoot { get; }
@@ -125,7 +274,7 @@ public sealed class EditorSession : IDisposable
         bool unloaded = Modules.Unload();
 
         Modules.Load(assemblyPath);
-        Scene = Serializer.Read(json);
+        Scene = Serializer.Read(json, ScenePath);
         Selection = selectedId is { } id ? Scene.DescendantsAndSelf().FirstOrDefault(n => n.Id == id) : null;
         if (!wasDirty)
             _savedRevision = Revision;   // recharger le code ne modifie pas le document
@@ -145,6 +294,7 @@ public sealed class EditorSession : IDisposable
         var result = (Serializer.Write(Scene), Selection?.Id);
         Scene = new SceneRoot();
         Selection = null;
+        _baselines.Clear();
         History.Clear();   // les commandes retiennent des nœuds et des PropertyInfo
         Play = null;
         Preview = null;
@@ -163,7 +313,7 @@ public sealed class EditorSession : IDisposable
 
     public void OpenScene(string path)
     {
-        Scene = Serializer.Read(File.ReadAllText(path));
+        Scene = Serializer.Read(File.ReadAllText(path), path);
         ScenePath = Path.GetFullPath(path);
         Selection = null;
         History.Clear();

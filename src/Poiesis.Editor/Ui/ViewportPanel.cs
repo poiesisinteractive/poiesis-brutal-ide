@@ -41,6 +41,9 @@ sealed class ViewportPanel
     /// <summary>Les canaux de débogage allumés dans le panneau Débogage.</summary>
     public HashSet<string>? DebugChannels { get; set; }
 
+    /// <summary>Gizmos fournis par le jeu (API d'extension).</summary>
+    public ExtensionHost? Extensions { get; set; }
+
     public float GridStep { get; private set; }
 
     public ViewportPanel(EditorSession session, SceneRenderer renderer, ViewportTextures textures)
@@ -80,7 +83,9 @@ sealed class ViewportPanel
 
         ImGui.Image(_textures.Viewport(slot), _view.ImageSize);
         bool hovered = ImGui.IsItemHovered();
-        HandleInput(hovered);
+        // Les poignées des gizmos du jeu passent avant la caméra et la sélection.
+        bool consumed = Extensions?.DrawGizmos(_view, hovered) ?? false;
+        HandleInput(hovered && !consumed);
         DrawOverlay();
         ImGui.End();
     }
@@ -98,6 +103,9 @@ sealed class ViewportPanel
         }
         DrawGizmo();
         DrawRing();
+        if (Extensions is not null)
+            foreach (var l in Extensions.GizmoDraw.Lines)
+                _view.Frame.Line(l.A, l.B, l.Color);
         if (world is not null)
             _view.DrawGame(world, _session.Modules.Module as IWorldVisualizer, DebugChannels, _session.Play is not null ? _session.SelectedEntity : -1);
         return _view.Frame;
@@ -394,10 +402,17 @@ sealed class ViewportPanel
         }
         var points = new List<float3>();
         var transforms = world.Store<Transform>();
+        var renderables = world.Store<Renderable>();
         var selected = SelectedSubtree();
         foreach (var (entity, owner) in bake.OwnerOf)
             if (world.IsAlive(entity) && transforms.Has(entity.Index) && selected.Contains(owner))
-                points.Add(transforms.Get(entity.Index).Position);
+            {
+                // Le centre et l'étendue : un astre de 45 km se cadre en entier, pas depuis son intérieur.
+                var p = transforms.Get(entity.Index).Position;
+                float r = renderables.Has(entity.Index) ? renderables.Get(entity.Index).BoundingRadius : 0;
+                points.Add(p - new float3(r));
+                points.Add(p + new float3(r));
+            }
         if (points.Count > 0)
             _view.FramePoints(points);
     }

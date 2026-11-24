@@ -9,6 +9,7 @@
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/Poiesis.AI/Poiesis.AI.csproj" />
+    <Project Path="src/Poiesis.Editor.Api/Poiesis.Editor.Api.csproj" />
     <Project Path="src/Poiesis.Editor.Core/Poiesis.Editor.Core.csproj" />
     <Project Path="src/Poiesis.Editor/Poiesis.Editor.csproj" />
     <Project Path="src/Poiesis.Engine.Core/Poiesis.Engine.Core.csproj" />

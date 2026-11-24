@@ -1,0 +1,17 @@
+{
+  "type": "orionum.fleet",
+  "id": "f63f6c19-ee1d-5efe-a61b-4f6c1822740b",
+  "name": "Ligne des Clans",
+  "props": {
+    "faction": "clans",
+    "position": [
+      0,
+      0,
+      0
+    ],
+    "heading": 180,
+    "composition": "clans.standard",
+    "scale": 1,
+    "spacing": 3
+  }
+}

@@ -23,7 +23,7 @@ public class BattleTests
     static PlaySession Start(string scene, Action<Node>? edit = null)
     {
         var (module, registry) = LoadModule();
-        var root = new SceneSerializer(registry).Read(File.ReadAllText(GameModuleTests.Scene(scene)));
+        var root = new SceneSerializer(registry, GameModuleTests.ContentRoot).Read(File.ReadAllText(GameModuleTests.Scene(scene)));
         edit?.Invoke(root);
         return new PlaySession(root, module);
     }
@@ -167,7 +167,7 @@ public class BattleTests
     {
         var (module, registry) = LoadModule();
         var json = File.ReadAllText(GameModuleTests.Scene("capital-battle"));
-        var serializer = new SceneSerializer(registry);
+        var serializer = new SceneSerializer(registry, GameModuleTests.ContentRoot);
 
         var series = Series.Run("capital-battle", () => serializer.Read(json), module, firstSeed: 7, runs: 2, maxSeconds: 1200);
 
@@ -183,7 +183,7 @@ public class BattleTests
     {
         var (module, registry) = LoadModule();
         var json = File.ReadAllText(GameModuleTests.Scene("capital-battle"));
-        var serializer = new SceneSerializer(registry);
+        var serializer = new SceneSerializer(registry, GameModuleTests.ContentRoot);
         string Play(int seed)
         {
             var scene = serializer.Read(json);

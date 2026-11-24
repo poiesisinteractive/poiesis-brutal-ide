@@ -22,7 +22,7 @@ public sealed record ProjectConfig
     public string? TestProject { get; init; }
 
     /// <summary>Scène ouverte au démarrage dans l'éditeur, et jouée par le jeu exporté.</summary>
-    public string? StartScene { get; init; }
+    public string? StartScene { get; set; }
 
     /// <summary>Lignes de crédits du jeu, affichées dans le jeu exporté (avant celles de BRUTAL).</summary>
     public IReadOnlyList<string> Credits { get; init; } = [];

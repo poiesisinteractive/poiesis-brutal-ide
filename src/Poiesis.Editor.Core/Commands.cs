@@ -42,16 +42,77 @@ public sealed class AddNodeCommand(Node parent, Node child) : IEditorCommand
     public void Undo() => parent.RemoveChild(child);
 }
 
+/// <summary>Insère un nœud à une position donnée parmi les enfants (coller après la sélection).</summary>
+public sealed class InsertNodeCommand(Node parent, int index, Node child) : IEditorCommand
+{
+    public string Label => $"Ajouter {child.Name}";
+
+    public void Do() => parent.InsertChild(index, child);
+
+    public void Undo() => parent.RemoveChild(child);
+}
+
 public sealed class RemoveNodeCommand(Node node) : IEditorCommand
 {
     readonly Node _parent = node.Parent ?? throw new InvalidOperationException("On ne supprime pas la racine");
+    readonly int _index = node.Parent!.IndexOf(node);
 
     public string Label => $"Supprimer {node.Name}";
 
     public void Do() => _parent.RemoveChild(node);
 
-    // Simplification du squelette : le nœud revient en dernière position parmi ses frères.
-    public void Undo() => _parent.AddChild(node);
+    public void Undo() => _parent.InsertChild(_index, node);
+}
+
+/// <summary>Remplace un nœud par un autre, à la même place (enregistrer une branche comme scène).</summary>
+public sealed class ReplaceNodeCommand(Node oldNode, Node newNode, string label) : IEditorCommand
+{
+    readonly Node _parent = oldNode.Parent ?? throw new InvalidOperationException("On ne remplace pas la racine");
+    readonly int _index = oldNode.Parent!.IndexOf(oldNode);
+
+    public string Label => label;
+
+    public void Do()
+    {
+        _parent.RemoveChild(oldNode);
+        _parent.InsertChild(_index, newNode);
+    }
+
+    public void Undo()
+    {
+        _parent.RemoveChild(newNode);
+        _parent.InsertChild(_index, oldNode);
+    }
+}
+
+/// <summary>« Rendre local » : l'instance devient des nœuds ordinaires de la scène, détachés de leur source.</summary>
+public sealed class MakeLocalCommand(Node instance) : IEditorCommand
+{
+    readonly string? _path = instance.InstanceOf;
+
+    public string Label => $"Rendre local {instance.Name}";
+
+    public void Do() => instance.InstanceOf = null;
+
+    public void Undo() => instance.InstanceOf = _path;
+}
+
+/// <summary>Plusieurs commandes annulées et rétablies d'un bloc (coller plusieurs nœuds, rétablir toutes les surcharges).</summary>
+public sealed class CompositeCommand(string label, IReadOnlyList<IEditorCommand> commands) : IEditorCommand
+{
+    public string Label => label;
+
+    public void Do()
+    {
+        foreach (var c in commands)
+            c.Do();
+    }
+
+    public void Undo()
+    {
+        for (int i = commands.Count - 1; i >= 0; i--)
+            commands[i].Undo();
+    }
 }
 
 /// <summary>Déplace un nœud sous un autre parent (glisser-déposer dans l'arbre).</summary>

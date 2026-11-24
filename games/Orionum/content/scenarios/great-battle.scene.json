@@ -9,74 +9,43 @@
   },
   "children": [
     {
-      "type": "orionum.fleet",
+      "instance": "fleets/coalition.line.scene.json",
       "id": "01b676de-249d-570f-8d54-ee6224288450",
       "name": "Coalition",
-      "props": {
-        "faction": "coalition",
-        "position": [
-          0,
-          0,
-          -80000
-        ],
-        "heading": 0,
-        "composition": "coalition.standard",
-        "scale": 20,
-        "spacing": 3
+      "overrides": {
+        "f0c939cf-4cfa-578d-890a-d4d4a532bc4b": {
+          "props": {
+            "position": [
+              0,
+              0,
+              -80000
+            ],
+            "scale": 20
+          }
+        }
       }
     },
     {
-      "type": "orionum.fleet",
+      "instance": "fleets/clans.line.scene.json",
       "id": "e715c645-ec16-5fbf-a37c-44c28597173f",
       "name": "Clans",
-      "props": {
-        "faction": "clans",
-        "position": [
-          0,
-          0,
-          80000
-        ],
-        "heading": 180,
-        "composition": "clans.standard",
-        "scale": 20,
-        "spacing": 3
+      "overrides": {
+        "f63f6c19-ee1d-5efe-a61b-4f6c1822740b": {
+          "props": {
+            "position": [
+              0,
+              0,
+              80000
+            ],
+            "scale": 20
+          }
+        }
       }
     },
     {
-      "type": "orionum.body",
-      "id": "bd701316-0eaf-58da-9f1a-ca399866f6d3",
-      "name": "Wolf 359 b",
-      "props": {
-        "position": [
-          -160000,
-          -40000,
-          30000
-        ],
-        "radius": 45000,
-        "color": [
-          0.55,
-          0.42,
-          0.36
-        ]
-      }
-    },
-    {
-      "type": "orionum.body",
-      "id": "0e7863db-18a8-5fe8-bc13-f97f8708e442",
-      "name": "Lune",
-      "props": {
-        "position": [
-          110000,
-          25000,
-          -60000
-        ],
-        "radius": 9000,
-        "color": [
-          0.5,
-          0.5,
-          0.52
-        ]
-      }
+      "instance": "systems/wolf-359.scene.json",
+      "id": "7fca07bf-ea73-5785-83e5-57880fea1230",
+      "name": "Système de Wolf 359"
     }
   ]
 }

@@ -31,7 +31,7 @@ var registry = new NodeTypeRegistry();
 using var host = new GameModuleHost(registry, Path.GetFullPath(positional[1]));
 var module = host.Load(Path.GetFullPath(positional[0]));
 var sceneJson = File.ReadAllText(positional[2]);
-var serializer = new SceneSerializer(registry);
+var serializer = new SceneSerializer(registry, Path.GetFullPath(positional[1]));
 var json = new JsonSerializerOptions { WriteIndented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
 
 if (runs > 0)

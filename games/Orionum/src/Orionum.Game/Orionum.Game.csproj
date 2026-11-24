@@ -10,7 +10,12 @@
     <!-- Le moteur est fourni par l'hôte (éditeur ou headless) : on ne le copie pas à côté du jeu. -->
     <ProjectReference Include="..\..\..\..\src\Poiesis.Engine.Scene\Poiesis.Engine.Scene.csproj">
       <Private>false</Private>
-      <ExcludeAssets>runtime</ExcludeAssets>
+      <ExcludeAssets>runtime;native</ExcludeAssets>
+    </ProjectReference>
+    <!-- Les outils d'éditeur propres à Orionum (panneaux, inspecteurs, gizmos), rechargés avec le jeu. -->
+    <ProjectReference Include="..\..\..\..\src\Poiesis.Editor.Api\Poiesis.Editor.Api.csproj">
+      <Private>false</Private>
+      <ExcludeAssets>runtime;native</ExcludeAssets>
     </ProjectReference>
   </ItemGroup>
 

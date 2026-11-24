@@ -1,0 +1,17 @@
+{
+  "type": "orionum.fleet",
+  "id": "f0c939cf-4cfa-578d-890a-d4d4a532bc4b",
+  "name": "Ligne de la Coalition",
+  "props": {
+    "faction": "coalition",
+    "position": [
+      0,
+      0,
+      0
+    ],
+    "heading": 0,
+    "composition": "coalition.standard",
+    "scale": 1,
+    "spacing": 3
+  }
+}
