@@ -53,24 +53,62 @@ Le jeu tire l'éditeur (décision du 2026-11-24) : chaque jalon d'Orionum livre 
 - débogage en jeu ;
 - code et build.
 
-## J2 : Orionum réécrit, première partie, et débogage en jeu
+## J2a : Orionum réécrit et débogage en jeu ✅
 
-Critère : *la bataille des capitaux du POC tourne dans l'éditeur. On la met en pause sur un tir, on avance image par image, on modifie la coque d'un vaisseau en direct, on revient à un instantané. On exporte le jeu et un joueur le lance sans l'éditeur.*
+Critère : *la bataille des capitaux tourne dans l'éditeur ; on la met en pause sur un tir, on avance image par image, on modifie la coque d'un vaisseau en direct, on prend un instantané et on y revient ; le profileur montre le coût de chaque système.*
 
 Jeu :
 - vol newtonien assisté, croisière, boucliers à 6 faces, sous-systèmes, tourelles et lances, dégâts localisés ;
 - index spatial et phases parallèles (`JobScheduler` de BRUTAL), objectif 500 contre 500 fluide ;
 - rendu de masse : instanciation, icônes tactiques au loin.
 
-Éditeur, ce qu'il faut pour mettre au point cette sim :
-- **débogage en jeu** : pause, image par image, édition des composants en direct dans le panneau Entités ;
-- **instantanés manuels** de la partie (prendre, revenir), sur le clone du monde ECS ;
-- **dessin de débogage** fourni par le jeu (portées, cibles, vecteurs) ;
-- **profileur par système** (temps par phase et par image) ;
-- **gizmo de rotation** (orientation des flottes et des coques) ;
-- **code** : erreurs de build cliquables qui ouvrent VS Code à la bonne ligne (`code --goto`), ouverture du projet C#, tests du jeu lancés depuis l'éditeur ;
-- **export Windows autonome** : exécutable hôte, DLL du jeu, contenu, splash et `NOTICE.txt` BRUTAL ;
-- **IA qui analyse une partie** : métriques et journaux d'une partie, ou d'une série en headless ; l'agent explique l'équilibrage, les bugs, les performances.
+Éditeur :
+- pause, image par image, édition des composants en direct ;
+- instantanés manuels de la partie ;
+- dessin de débogage fourni par le jeu (portées, cibles, tirs) ;
+- profileur par système ;
+- gizmo de rotation.
+
+### Bilan du J2a
+
+Démontré dans l'éditeur sous Xvfb, et par 31 tests :
+- la bataille des capitaux se met en pause en plein combat et avance pas à pas ;
+- on sélectionne un vaisseau amiral : portées, cibles et tourelles s'affichent (vivantes ou détruites) ;
+- on édite ses composants, on prend un instantané, on avance de 45 s et on revient exactement ;
+- le profileur montre le coût de chaque système ;
+- la grande bataille 500 contre 500 tourne dans l'éditeur ;
+- l'anneau de cap fait tourner une flotte, et l'action est annulable.
+
+| Élément | État |
+| --- | --- |
+| Données : 10 classes et 2 compositions en JSON (`content/ships`, `content/fleets`), tourelles décrites par rangées et répartitions | ✅ |
+| Vol newtonien assisté (ordinateur de vol, rotation bang-bang, vitesse sûre), croisière et sortie de croisière | ✅ |
+| Styles d'engagement par classe : axe, bordée, orbite, retrait | ✅ |
+| Boucliers à 6 faces, sous-systèmes (moteurs, armes, générateurs) avec réparation, menace par face | ✅ |
+| Bordées, tourelles, lances (rayon continu), canon axial (rayon ou obus perçant), missiles guidés, défense ponctuelle | ✅ |
+| Dégâts localisés : impact sur la coque allongée, usure puis destruction de la tourelle la plus proche | ✅ |
+| Index spatial, phases parallèles déterministes (`JobScheduler`) ; 500 contre 500 : ~3 ms par pas en Release sur 4 cœurs | ✅ |
+| Rendu de masse : instanciation, taille apparente minimale ; traînées, rayons, explosions dessinés par le jeu | ✅ |
+| Pause, pas à pas (F6, F10), édition des composants en direct, structures imbriquées comprises | ✅ |
+| Instantanés manuels (F9, Revenir), avec les ressources de la bataille copiées | ✅ |
+| Dessins de débogage du jeu par canal : cibles, portées, vitesses, boucliers, escadres ; HUD de bataille | ✅ |
+| Profileur par système : moyenne, pic, historique ; images par seconde | ✅ |
+| Gizmo de rotation : anneau de cap sur les nœuds qui ont une propriété `Heading` | ✅ |
+
+Volontairement hors du J2a :
+- les escadrilles des porteurs (hangars et chasseurs) ;
+- l'IA de commandement (les escadres engagent l'ennemi le plus proche) ;
+- les capacités Orionum ;
+- la gravité et les collisions des astres (décor seulement) ;
+- l'équilibrage : la Coalition l'emporte le plus souvent, à vérifier avec l'analyse IA du J2b.
+
+## J2b : sortir le jeu de l'éditeur
+
+Critère : *un joueur lance Orionum exporté, sans l'éditeur ; une erreur de build s'ouvre dans VS Code à la bonne ligne ; l'IA explique pourquoi les Clans gagnent 70 % des batailles.*
+
+- Erreurs de build cliquables, ouvertes dans VS Code (`code --goto`), ouverture du projet C#, tests du jeu lancés depuis l'éditeur.
+- Export Windows autonome : exécutable hôte, DLL du jeu, contenu, splash et `NOTICE.txt` BRUTAL.
+- IA qui analyse une partie ou une série en headless : équilibrage, bugs, performances.
 
 ## J3 : modèles, contenu et réutilisation
 

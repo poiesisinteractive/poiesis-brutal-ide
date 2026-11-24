@@ -306,7 +306,8 @@ sealed class AiPanel(EditorSession session, ProjectConfig project, LogBuffer log
         return $"""
             Jeu : {project.Name}, dossier {root}/ du dépôt.
             Gameplay (DLL rechargée à chaud) : {root}/{project.GameProject}. Tests : {root}/{project.TestProject ?? "aucun"}.
-            Contenu JSON : {root}/content/ (scènes *.scene.json, définitions de vaisseaux ships/*.ship.json).
+            Contenu JSON : {root}/content/ (scènes scenarios/*.scene.json, classes de vaisseaux ships/*.ship.json, compositions de flottes fleets/*.fleet.json).
+            Les systèmes de la sim tournent à 20 Hz ; ils doivent rester déterministes (pas d'aléa non semé, effets croisés appliqués dans un ordre fixe).
             Types de nœuds enregistrés : {nodes}.
             Le moteur (src/Poiesis.*) fournit World, ISystem, Schedule, Node, IGameModule, Transform et Renderable.
             """;

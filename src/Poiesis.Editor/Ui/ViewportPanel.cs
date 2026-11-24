@@ -2,6 +2,7 @@ using System.Reflection;
 using Brutal.ImGuiApi;
 using Brutal.Numerics;
 using Poiesis.Engine;
+using Poiesis.Engine.Debug;
 using Poiesis.Engine.Ecs;
 using Poiesis.Engine.Scene;
 using Poiesis.Render;
@@ -45,6 +46,17 @@ sealed class ViewportPanel
 
     static readonly float3[] Axes = [new(1, 0, 0), new(0, 1, 0), new(0, 0, 1)];
     static readonly float4[] AxisColors = [new(0.95f, 0.30f, 0.30f, 1), new(0.40f, 0.90f, 0.35f, 1), new(0.35f, 0.55f, 1f, 1)];
+
+    readonly DrawContext _draw = new();
+
+    /// <summary>Les canaux de débogage allumés dans le panneau Débogage.</summary>
+    public HashSet<string>? DebugChannels { get; set; }
+
+    // Anneau de rotation : cap (propriété « Heading », degrés) du nœud sélectionné.
+    bool _ringDrag;
+    Node? _ringNode;
+    PropertyInfo? _ringProperty;
+    float _ringStart, _ringCurrent, _ringLastAngle;
 
     public ViewportPanel(EditorSession session, SceneRenderer renderer, VulkanBackendTextures textures)
     {
@@ -146,6 +158,8 @@ sealed class ViewportPanel
         }
 
         DrawGizmo();
+        DrawRing();
+        DrawGame(world, eye);
         return _frame;
     }
 
@@ -171,7 +185,9 @@ sealed class ViewportPanel
     {
         // Pas de grille adapté au zoom (puissance de 10), lignes majeures tous les 10 pas.
         float step = MathF.Pow(10, MathF.Floor(MathF.Log10(MathF.Max(_distance / 4f, 10f))));
-        const int half = 20;
+        // Étendue bornée à ~1,5 fois la distance de vue : des lignes bien plus longues que la distance à la caméra
+        // perdent leur précision au découpage (artefact constaté à 500 km).
+        int half = Math.Clamp((int)MathF.Ceiling(1.5f * _distance / step), 4, 20);
         float cx = MathF.Round(_target.X / step) * step, cz = MathF.Round(_target.Z / step) * step;
         var minor = new float4(0.30f, 0.32f, 0.42f, 0.35f);
         var major = new float4(0.45f, 0.48f, 0.62f, 0.70f);
@@ -219,6 +235,138 @@ sealed class ViewportPanel
         }
     }
 
+    /// <summary>La propriété de cap (« Heading », degrés autour de la verticale) du nœud sélectionné, s'il en a une.</summary>
+    (Node Node, PropertyInfo Property)? RingTarget()
+    {
+        if (_session.Selection is not { } node || _session.Play is not null)
+            return null;
+        var p = node.GetType().GetProperty("Heading");
+        var pos = node.GetType().GetProperty("Position");
+        return p is not null && p.PropertyType == typeof(float) && p.CanWrite && pos?.PropertyType == typeof(float3) ? (node, p) : null;
+    }
+
+    float3 RingCenter(Node node) => (float3)node.GetType().GetProperty("Position")!.GetValue(node)!;
+
+    void DrawRing()
+    {
+        if (RingTarget() is not { } g)
+            return;
+        var center = RingCenter(g.Node);
+        float r = GizmoLength(center) * 0.75f;
+        var color = _ringDrag ? new float4(1, 1, 0.4f, 1) : new float4(1f, 0.8f, 0.3f, 0.9f);
+        const int n = 64;
+        for (int i = 0; i < n; i++)
+        {
+            float a0 = i * MathF.Tau / n, a1 = (i + 1) * MathF.Tau / n;
+            _frame.Line(center + new float3(MathF.Sin(a0), 0, MathF.Cos(a0)) * r, center + new float3(MathF.Sin(a1), 0, MathF.Cos(a1)) * r, color);
+        }
+        // Le cap actuel : un trait du centre vers l'anneau.
+        float yaw = (float)g.Property.GetValue(g.Node)! * MathF.PI / 180;
+        _frame.Line(center, center + new float3(MathF.Sin(yaw), 0, MathF.Cos(yaw)) * r, color);
+    }
+
+    /// <summary>Angle (degrés, convention du cap) du point visé par la souris dans le plan horizontal du nœud.</summary>
+    bool MouseHeading(float2 mouse, float3 center, out float degrees)
+    {
+        degrees = 0;
+        if (!Ray(mouse, out var origin, out var dir) || MathF.Abs(dir.Y) < 1e-4f)
+            return false;
+        float t = (center.Y - origin.Y) / dir.Y;
+        if (t <= 0)
+            return false;
+        var hit = origin + dir * t - center;
+        degrees = MathF.Atan2(hit.X, hit.Z) * 180 / MathF.PI;
+        return true;
+    }
+
+    bool TryStartRingDrag(float2 mouse)
+    {
+        if (RingTarget() is not { } g)
+            return false;
+        var center = RingCenter(g.Node);
+        float r = GizmoLength(center) * 0.75f;
+        // Clic près de l'anneau projeté.
+        const int n = 64;
+        bool near = false;
+        for (int i = 0; i < n && !near; i++)
+        {
+            float a0 = i * MathF.Tau / n, a1 = (i + 1) * MathF.Tau / n;
+            if (Project(center + new float3(MathF.Sin(a0), 0, MathF.Cos(a0)) * r, out var s0)
+                && Project(center + new float3(MathF.Sin(a1), 0, MathF.Cos(a1)) * r, out var s1))
+                near = DistanceToSegment(mouse, s0, s1) < 8f;
+        }
+        if (!near || !MouseHeading(mouse, center, out var angle))
+            return false;
+        _ringDrag = true;
+        _ringNode = g.Node;
+        _ringProperty = g.Property;
+        _ringStart = _ringCurrent = (float)g.Property.GetValue(g.Node)!;
+        _ringLastAngle = angle;
+        return true;
+    }
+
+    void ContinueRingDrag(float2 mouse)
+    {
+        if (!MouseHeading(mouse, RingCenter(_ringNode!), out var angle))
+            return;
+        float delta = angle - _ringLastAngle;
+        delta -= MathF.Round(delta / 360) * 360;   // passage par ±180°
+        _ringLastAngle = angle;
+        _ringCurrent += delta;
+        _ringProperty!.SetValue(_ringNode, _ringCurrent);
+        _session.Touch();
+    }
+
+    void EndRingDrag()
+    {
+        _ringProperty!.SetValue(_ringNode, _ringStart);
+        if (MathF.Abs(_ringCurrent - _ringStart) > 0.01f)
+            _session.History.Execute(new SetPropertyCommand(_ringNode!, _ringProperty, MathF.Round(_ringCurrent)));
+        _ringDrag = false;
+        _ringNode = null;
+        _ringProperty = null;
+    }
+
+    // ----- Dessins du jeu ----------------------------------------------------------------------------
+
+    /// <summary>Tirs, rayons, explosions et aides de débogage dessinés par le jeu, plus le repère de l'entité sélectionnée.</summary>
+    void DrawGame(World? world, float3 eye)
+    {
+        _draw.Clear();
+        if (world is null || _session.Modules.Module is not IWorldVisualizer visualizer)
+            return;
+        _draw.EnabledChannels.Clear();
+        if (DebugChannels is not null)
+            _draw.EnabledChannels.UnionWith(DebugChannels);
+        _draw.CameraPosition = eye;
+        _draw.PixelsPerRadian = _imageSize.Y / Fov;
+        _draw.SelectedEntity = _session.Play is not null ? _session.SelectedEntity : -1;
+        try
+        {
+            visualizer.Draw(world, _draw);
+        }
+        catch (Exception ex)
+        {
+            _draw.HudLine($"Erreur du dessin du jeu : {ex.Message}", EditorTheme.Error);
+        }
+        foreach (var l in _draw.Lines)
+            _frame.Line(l.A, l.B, l.Color);
+
+        // Repère de l'entité sélectionnée en jeu : un cercle à taille d'écran minimale.
+        int sel = _draw.SelectedEntity;
+        if (sel >= 0 && !world.EntityAt(sel).IsNull && world.Store<Transform>().Has(sel))
+        {
+            var p = world.Store<Transform>().Get(sel).Position;
+            float r = MathF.Max(world.Store<Renderable>().Has(sel) ? world.Store<Renderable>().Get(sel).BoundingRadius * 1.3f : 0, _draw.MetersForPixels(p, 18));
+            const int n = 48;
+            for (int i = 0; i < n; i++)
+            {
+                float a0 = i * MathF.Tau / n, a1 = (i + 1) * MathF.Tau / n;
+                _frame.Line(p + new float3(MathF.Cos(a0), 0, MathF.Sin(a0)) * r, p + new float3(MathF.Cos(a1), 0, MathF.Sin(a1)) * r, EditorTheme.Accent);
+            }
+        }
+    }
+
     // ----- Entrées -----------------------------------------------------------------------------------
 
     void HandleInput(bool hovered)
@@ -233,6 +381,13 @@ sealed class ViewportPanel
                 EndGizmoDrag();
             return;
         }
+        if (_ringDrag)
+        {
+            ContinueRingDrag(mouse);
+            if (!ImGui.IsMouseDown(ImGuiMouseButton.Left))
+                EndRingDrag();
+            return;
+        }
 
         if (!hovered)
             return;
@@ -240,7 +395,7 @@ sealed class ViewportPanel
         if (io.MouseWheel != 0)
             _distance = Math.Clamp(_distance * MathF.Pow(0.85f, io.MouseWheel), 20f, 5_000_000f);
 
-        if (ImGui.IsMouseClicked(ImGuiMouseButton.Left) && TryStartGizmoDrag(mouse))
+        if (ImGui.IsMouseClicked(ImGuiMouseButton.Left) && (TryStartGizmoDrag(mouse) || TryStartRingDrag(mouse)))
             return;
 
         if (ImGui.IsMouseDragging(ImGuiMouseButton.Left, 2f) || ImGui.IsMouseDragging(ImGuiMouseButton.Middle, 2f) && !io.KeyShift)
@@ -365,11 +520,22 @@ sealed class ViewportPanel
         }
 
         _session.Selection = !hit.IsNull && bake.OwnerOf.TryGetValue(hit, out var owner) ? _session.FindNode(owner) : null;
+        if (_session.Play is not null)
+            _session.SelectedEntity = hit.IsNull ? -1 : hit.Index;
     }
 
     public void FrameSelection()
     {
+        _framedOnce = true;
         var (world, bake) = Source();
+        if (_session.Play is not null && world is not null && _session.SelectedEntity >= 0
+            && !world.EntityAt(_session.SelectedEntity).IsNull && world.Store<Transform>().Has(_session.SelectedEntity))
+        {
+            var p = world.Store<Transform>().Get(_session.SelectedEntity).Position;
+            float r = world.Store<Renderable>().Has(_session.SelectedEntity) ? world.Store<Renderable>().Get(_session.SelectedEntity).BoundingRadius : 500;
+            Frame([p - new float3(r * 4), p + new float3(r * 4)]);
+            return;
+        }
         if (_session.Selection is null || world is null || bake is null)
         {
             if (world is not null)
@@ -467,10 +633,21 @@ sealed class ViewportPanel
         dl.AddText(pos, Widgets.Col(modeColor), mode);
         dl.AddText(pos + new float2(0, 18), Widgets.Col(EditorTheme.Muted),
             $"{world?.EntityCount ?? 0} entités · grille {FormatDistance(GridStep)} · caméra à {FormatDistance(_distance)}");
+        // HUD et étiquettes fournis par le jeu.
+        var hudPos = pos + new float2(0, 40);
+        foreach (var (text, color) in _draw.Hud)
+        {
+            dl.AddText(hudPos, Widgets.Col(color), text);
+            hudPos.Y += 18;
+        }
+        foreach (var label in _draw.Labels)
+            if (Project(label.At, out var ls) && ls.X >= 0 && ls.Y >= 0 && ls.X < _imageSize.X && ls.Y < _imageSize.Y)
+                dl.AddText(_imageMin + ls + new float2(6, -8), Widgets.Col(label.Color), label.Text);
+
         if (_session.PreviewError is { } error && _session.Play is null)
-            dl.AddText(pos + new float2(0, 36), Widgets.Col(EditorTheme.Error), $"Aperçu impossible : {error}");
+            dl.AddText(_imageMin + new float2(10, _imageSize.Y - 26), Widgets.Col(EditorTheme.Error), $"Aperçu impossible : {error}");
         if (_session.Modules.Module is null)
-            dl.AddText(pos + new float2(0, 36), Widgets.Col(EditorTheme.Warning), "Aucun module de jeu chargé : compilez le jeu (Ctrl+B)."u8);
+            dl.AddText(_imageMin + new float2(10, _imageSize.Y - 26), Widgets.Col(EditorTheme.Warning), "Aucun module de jeu chargé : compilez le jeu (Ctrl+B)."u8);
 
         // Étiquettes des nœuds racines de la scène (flottes…), au-dessus de leur position.
         if (_session.Play is null)

@@ -1,0 +1,162 @@
+{
+  "id": "clans.flagship",
+  "displayName": "Vaisseau amiral Gouffre",
+  "faction": "clans",
+  "role": "flagship",
+  "mesh": "heavyHull",
+  "lengthMeters": 3200,
+  "radius": 1600,
+  "hull": 680000,
+  "shieldFace": 16000,
+  "shieldRegen": 300,
+  "subsystemHp": 24000,
+  "speed": 30,
+  "accel": 2.2,
+  "turnRateDeg": 2,
+  "rcs": 0.07,
+  "angAccel": 0.007,
+  "engage": "nose",
+  "preferredRange": 20000,
+  "weapons": [
+    {
+      "name": "Canon axial",
+      "kind": "kinetic",
+      "mount": "nose",
+      "damage": 30000,
+      "rof": 0.03125,
+      "range": 30000,
+      "speed": 3000,
+      "arcDeg": 2.5,
+      "spread": 0.0004,
+      "turretHp": 30000,
+      "hardpoints": [
+        {
+          "point": [
+            0,
+            0,
+            1550
+          ]
+        }
+      ],
+      "pierce": 0.35
+    },
+    {
+      "name": "Bordée bâbord",
+      "kind": "kinetic",
+      "mount": "port",
+      "damage": 600,
+      "rof": 0.18,
+      "range": 22000,
+      "speed": 4200,
+      "arcDeg": 95,
+      "spread": 0.0012,
+      "tracking": 0.06,
+      "turretHp": 5000,
+      "hardpoints": [
+        {
+          "row": [
+            12,
+            380,
+            0,
+            -1100,
+            900
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Bordée tribord",
+      "kind": "kinetic",
+      "mount": "starboard",
+      "damage": 600,
+      "rof": 0.18,
+      "range": 22000,
+      "speed": 4200,
+      "arcDeg": 95,
+      "spread": 0.0012,
+      "tracking": 0.06,
+      "turretHp": 5000,
+      "hardpoints": [
+        {
+          "row": [
+            12,
+            -380,
+            0,
+            -1100,
+            900
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Tourelles dorsales",
+      "kind": "kinetic",
+      "mount": "turret",
+      "damage": 560,
+      "rof": 0.2,
+      "range": 20000,
+      "speed": 4300,
+      "arcDeg": 180,
+      "spread": 0.0015,
+      "tracking": 0.08,
+      "turretHp": 5000,
+      "hardpoints": [
+        {
+          "row": [
+            6,
+            60,
+            330,
+            -700,
+            600
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Missiles",
+      "kind": "missile",
+      "mount": "turret",
+      "damage": 200,
+      "rof": 0.08333333333333333,
+      "range": 26000,
+      "speed": 1000,
+      "arcDeg": 180,
+      "salvo": 24,
+      "turn": 0.9,
+      "turretHp": 3500,
+      "hardpoints": [
+        {
+          "row": [
+            16,
+            0,
+            260,
+            -1400,
+            -900
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Défense ponctuelle",
+      "kind": "pointDefence",
+      "mount": "turret",
+      "damage": 3,
+      "rof": 5,
+      "range": 1800,
+      "speed": 0,
+      "arcDeg": 180,
+      "hitChance": 0.26,
+      "turretHp": 600,
+      "hardpoints": [
+        {
+          "scatter": [
+            14,
+            420,
+            300,
+            1400
+          ]
+        }
+      ]
+    }
+  ]
+}

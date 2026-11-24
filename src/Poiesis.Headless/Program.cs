@@ -22,6 +22,15 @@ var sw = Stopwatch.StartNew();
 session.Run(steps);
 sw.Stop();
 
+// Lignes de HUD fournies par le jeu (issue de la bataille, pertes…), s'il en dessine.
+var hud = new List<string>();
+if (module is IWorldVisualizer visualizer)
+{
+    var draw = new Poiesis.Engine.Debug.DrawContext();
+    visualizer.Draw(session.World, draw);
+    hud.AddRange(draw.Hud.Select(h => h.Text));
+}
+
 var report = new
 {
     module = module.Name,
@@ -30,6 +39,8 @@ var report = new
     steps,
     msPerStep = sw.Elapsed.TotalMilliseconds / Math.Max(steps, 1),
     entities = session.World.EntityCount,
+    systems = session.Schedule.Timings.Select(t => new { name = t.Name, averageMs = Math.Round(t.AverageMs, 3), maxMs = Math.Round(t.MaxMs, 3) }),
+    hud,
 };
-Console.WriteLine(JsonSerializer.Serialize(report, new JsonSerializerOptions { WriteIndented = true }));
+Console.WriteLine(JsonSerializer.Serialize(report, new JsonSerializerOptions { WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping }));
 return 0;

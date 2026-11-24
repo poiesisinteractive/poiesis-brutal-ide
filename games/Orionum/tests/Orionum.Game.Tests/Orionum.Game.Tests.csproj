@@ -12,10 +12,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\..\src\Poiesis.Editor.Core\Poiesis.Editor.Core.csproj" />
-    <!-- Le jeu est compilé avant les tests, mais n'est pas référencé : on le charge comme l'éditeur, depuis sa DLL. -->
-    <ProjectReference Include="..\..\src\Orionum.Game\Orionum.Game.csproj">
-      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
-    </ProjectReference>
+    <!-- Référencé pour les tests de la sim ; les tests de hot reload chargent en plus sa DLL comme l'éditeur. -->
+    <ProjectReference Include="..\..\src\Orionum.Game\Orionum.Game.csproj" />
   </ItemGroup>
 
   <ItemGroup>

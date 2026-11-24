@@ -97,6 +97,9 @@ public sealed class EditorSession : IDisposable
 
     public Node? Selection { get; set; }
 
+    /// <summary>Entité sélectionnée dans la partie en cours (slot), ou -1 : inspecteur d'entités et dessins de débogage.</summary>
+    public int SelectedEntity { get; set; } = -1;
+
     public PlayState PlayState { get; private set; } = PlayState.Editing;
 
     public PlaySession? Play { get; private set; }
@@ -184,6 +187,13 @@ public sealed class EditorSession : IDisposable
         PlayState = PlayState.Playing;
     }
 
+    /// <summary>En pause : avance d'un pas de sim exactement.</summary>
+    public void StepOnce()
+    {
+        if (Play is not null && PlayState == PlayState.Paused)
+            Play.Run(1);
+    }
+
     public void TogglePause()
     {
         if (Play is null)
@@ -195,6 +205,7 @@ public sealed class EditorSession : IDisposable
     public void Stop()
     {
         Play = null;
+        SelectedEntity = -1;
         PlayState = PlayState.Editing;
     }
 

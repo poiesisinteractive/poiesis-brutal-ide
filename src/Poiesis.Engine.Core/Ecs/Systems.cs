@@ -15,26 +15,77 @@ public interface ISystem
     void Update(World world, in TickContext ctx);
 }
 
-/// <summary>Ordonnancement des systèmes : une liste ordonnée, exécutée à chaque pas.</summary>
+/// <summary>Temps passé dans un système : dernier pas, moyenne glissante et historique (profileur de l'éditeur).</summary>
+public sealed class SystemTiming(string name)
+{
+    public const int HistoryLength = 240;
+
+    readonly float[] _history = new float[HistoryLength];
+    int _head;
+
+    public string Name { get; } = name;
+    public double LastMs { get; private set; }
+    public double AverageMs { get; private set; }
+    public double MaxMs { get; private set; }
+
+    /// <summary>Historique en millisecondes, du plus ancien au plus récent.</summary>
+    public float[] History()
+    {
+        var copy = new float[HistoryLength];
+        for (int i = 0; i < HistoryLength; i++)
+            copy[i] = _history[(_head + i) % HistoryLength];
+        return copy;
+    }
+
+    internal void Record(double ms)
+    {
+        LastMs = ms;
+        AverageMs = AverageMs == 0 ? ms : AverageMs * 0.95 + ms * 0.05;
+        MaxMs = Math.Max(MaxMs * 0.999, ms);
+        _history[_head] = (float)ms;
+        _head = (_head + 1) % HistoryLength;
+    }
+}
+
+/// <summary>Ordonnancement des systèmes : une liste ordonnée, exécutée à chaque pas, chronométrée système par système.</summary>
 public sealed class Schedule
 {
     readonly List<ISystem> _systems = new();
+    readonly List<SystemTiming> _timings = new();
 
     public IReadOnlyList<ISystem> Systems => _systems;
+
+    /// <summary>Temps par système, dans l'ordre d'exécution, et le total du pas.</summary>
+    public IReadOnlyList<SystemTiming> Timings => _timings;
+
+    public SystemTiming Total { get; } = new("Total");
 
     public Schedule Add(ISystem system)
     {
         _systems.Add(system);
+        _timings.Add(new SystemTiming(system.Name));
         return this;
     }
 
-    public void Clear() => _systems.Clear();
+    public void Clear()
+    {
+        _systems.Clear();
+        _timings.Clear();
+    }
 
     public void Step(World world, double dt)
     {
         var ctx = new TickContext(world.Tick, dt);
-        foreach (var system in _systems)
-            system.Update(world, ctx);
+        long start = System.Diagnostics.Stopwatch.GetTimestamp();
+        long t0 = start;
+        for (int i = 0; i < _systems.Count; i++)
+        {
+            _systems[i].Update(world, ctx);
+            long t1 = System.Diagnostics.Stopwatch.GetTimestamp();
+            _timings[i].Record(System.Diagnostics.Stopwatch.GetElapsedTime(t0, t1).TotalMilliseconds);
+            t0 = t1;
+        }
+        Total.Record(System.Diagnostics.Stopwatch.GetElapsedTime(start, t0).TotalMilliseconds);
         world.Tick++;
     }
 }

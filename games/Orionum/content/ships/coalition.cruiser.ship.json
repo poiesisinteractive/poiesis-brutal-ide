@@ -1,9 +1,142 @@
 {
   "id": "coalition.cruiser",
-  "displayName": "Croiseur Bastion",
+  "displayName": "Croiseur Sentinelle",
+  "faction": "coalition",
+  "role": "cruiser",
+  "mesh": "hull",
   "lengthMeters": 600,
-  "hull": 12000,
-  "cruiseSpeed": 900,
-  "weaponRange": 20000,
-  "weaponDps": 140
+  "radius": 300,
+  "hull": 48000,
+  "shieldFace": 6000,
+  "shieldRegen": 140,
+  "subsystemHp": 3500,
+  "speed": 95,
+  "accel": 12,
+  "turnRateDeg": 9,
+  "rcs": 0.15,
+  "angAccel": 0.08,
+  "engage": "broadside",
+  "preferredRange": 14000,
+  "weapons": [
+    {
+      "name": "Bordée bâbord",
+      "kind": "kinetic",
+      "mount": "port",
+      "damage": 280,
+      "rof": 0.3,
+      "range": 18000,
+      "speed": 4000,
+      "arcDeg": 95,
+      "spread": 0.0012,
+      "tracking": 0.06,
+      "turretHp": 1600,
+      "hardpoints": [
+        {
+          "row": [
+            4,
+            70,
+            20,
+            -150,
+            170
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Bordée tribord",
+      "kind": "kinetic",
+      "mount": "starboard",
+      "damage": 280,
+      "rof": 0.3,
+      "range": 18000,
+      "speed": 4000,
+      "arcDeg": 95,
+      "spread": 0.0012,
+      "tracking": 0.06,
+      "turretHp": 1600,
+      "hardpoints": [
+        {
+          "row": [
+            4,
+            -70,
+            20,
+            -150,
+            170
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Lance",
+      "kind": "laser",
+      "mount": "turret",
+      "beamDuration": 4,
+      "damage": 5200,
+      "rof": 0.0625,
+      "range": 15000,
+      "speed": 0,
+      "arcDeg": 180,
+      "tracking": 0.05,
+      "vsShield": 1.6,
+      "vsHull": 0.9,
+      "turretHp": 2500,
+      "hardpoints": [
+        {
+          "row": [
+            1,
+            0,
+            60,
+            60,
+            60
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Missiles",
+      "kind": "missile",
+      "mount": "turret",
+      "damage": 160,
+      "rof": 0.07142857142857142,
+      "range": 22000,
+      "speed": 950,
+      "arcDeg": 180,
+      "salvo": 6,
+      "turn": 0.9,
+      "turretHp": 1200,
+      "hardpoints": [
+        {
+          "row": [
+            4,
+            0,
+            45,
+            -200,
+            -120
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Défense ponctuelle",
+      "kind": "pointDefence",
+      "mount": "turret",
+      "damage": 3,
+      "rof": 6,
+      "range": 1800,
+      "speed": 0,
+      "arcDeg": 180,
+      "hitChance": 0.3,
+      "turretHp": 600,
+      "hardpoints": [
+        {
+          "scatter": [
+            6,
+            80,
+            55,
+            260
+          ]
+        }
+      ]
+    }
+  ]
 }

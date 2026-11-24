@@ -3,5 +3,5 @@
   "gameProject": "src/Orionum.Game/Orionum.Game.csproj",
   "gameAssembly": "src/Orionum.Game/bin/Debug/net10.0/Orionum.Game.dll",
   "testProject": "tests/Orionum.Game.Tests/Orionum.Game.Tests.csproj",
-  "startScene": "content/scenarios/line-battle.scene.json"
+  "startScene": "content/scenarios/capital-battle.scene.json"
 }

@@ -1,0 +1,71 @@
+{
+  "id": "coalition.frigate",
+  "displayName": "Frégate Glaive",
+  "faction": "coalition",
+  "role": "frigate",
+  "mesh": "hull",
+  "lengthMeters": 150,
+  "radius": 75,
+  "hull": 2600,
+  "shieldFace": 650,
+  "shieldRegen": 30,
+  "subsystemHp": 500,
+  "speed": 190,
+  "accel": 45,
+  "turnRateDeg": 32,
+  "rcs": 0.3,
+  "angAccel": 0.9,
+  "engage": "orbit",
+  "preferredRange": 3500,
+  "weapons": [
+    {
+      "name": "Lasers légers",
+      "kind": "laser",
+      "mount": "turret",
+      "damage": 70,
+      "rof": 0.9,
+      "range": 6000,
+      "speed": 5000,
+      "arcDeg": 180,
+      "spread": 0.003,
+      "tracking": 0.35,
+      "vsShield": 1.4,
+      "vsHull": 0.8,
+      "turretHp": 500,
+      "hardpoints": [
+        {
+          "row": [
+            2,
+            0,
+            14,
+            10,
+            35
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Défense ponctuelle",
+      "kind": "pointDefence",
+      "mount": "turret",
+      "damage": 3,
+      "rof": 6,
+      "range": 1500,
+      "speed": 0,
+      "arcDeg": 180,
+      "hitChance": 0.3,
+      "turretHp": 600,
+      "hardpoints": [
+        {
+          "row": [
+            2,
+            0,
+            -10,
+            -20,
+            20
+          ]
+        }
+      ]
+    }
+  ]
+}

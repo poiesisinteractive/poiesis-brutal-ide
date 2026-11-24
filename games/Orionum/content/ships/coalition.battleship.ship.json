@@ -1,0 +1,168 @@
+{
+  "id": "coalition.battleship",
+  "displayName": "Cuirassé Rempart",
+  "faction": "coalition",
+  "role": "battleship",
+  "mesh": "hull",
+  "lengthMeters": 1500,
+  "radius": 750,
+  "hull": 200000,
+  "shieldFace": 15000,
+  "shieldRegen": 300,
+  "subsystemHp": 9000,
+  "speed": 52,
+  "accel": 5,
+  "turnRateDeg": 4.2,
+  "rcs": 0.1,
+  "angAccel": 0.02,
+  "engage": "broadside",
+  "preferredRange": 18000,
+  "weapons": [
+    {
+      "name": "Bordée bâbord",
+      "kind": "kinetic",
+      "mount": "port",
+      "damage": 420,
+      "rof": 0.25,
+      "range": 21000,
+      "speed": 4500,
+      "arcDeg": 95,
+      "spread": 0.0012,
+      "tracking": 0.06,
+      "turretHp": 3000,
+      "hardpoints": [
+        {
+          "row": [
+            8,
+            170,
+            30,
+            -480,
+            420
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Bordée tribord",
+      "kind": "kinetic",
+      "mount": "starboard",
+      "damage": 420,
+      "rof": 0.25,
+      "range": 21000,
+      "speed": 4500,
+      "arcDeg": 95,
+      "spread": 0.0012,
+      "tracking": 0.06,
+      "turretHp": 3000,
+      "hardpoints": [
+        {
+          "row": [
+            8,
+            -170,
+            30,
+            -480,
+            420
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Tourelles dorsales",
+      "kind": "laser",
+      "mount": "turret",
+      "damage": 360,
+      "rof": 0.3,
+      "range": 19000,
+      "speed": 5000,
+      "arcDeg": 180,
+      "spread": 0.0015,
+      "tracking": 0.2,
+      "turretHp": 3000,
+      "hardpoints": [
+        {
+          "row": [
+            5,
+            0,
+            150,
+            -300,
+            380
+          ]
+        }
+      ],
+      "vsShield": 1.5,
+      "vsHull": 0.7
+    },
+    {
+      "name": "Lance",
+      "kind": "laser",
+      "mount": "turret",
+      "beamDuration": 5,
+      "damage": 9500,
+      "rof": 0.05,
+      "range": 17000,
+      "speed": 0,
+      "arcDeg": 180,
+      "tracking": 0.05,
+      "vsShield": 1.6,
+      "vsHull": 0.9,
+      "turretHp": 4500,
+      "hardpoints": [
+        {
+          "row": [
+            2,
+            0,
+            175,
+            120,
+            260
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Missiles",
+      "kind": "missile",
+      "mount": "turret",
+      "damage": 200,
+      "rof": 0.0625,
+      "range": 24000,
+      "speed": 1000,
+      "arcDeg": 180,
+      "salvo": 8,
+      "turn": 0.9,
+      "turretHp": 2000,
+      "hardpoints": [
+        {
+          "row": [
+            6,
+            0,
+            120,
+            -560,
+            -420
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Défense ponctuelle",
+      "kind": "pointDefence",
+      "mount": "turret",
+      "damage": 3,
+      "rof": 6,
+      "range": 1800,
+      "speed": 0,
+      "arcDeg": 180,
+      "hitChance": 0.3,
+      "turretHp": 600,
+      "hardpoints": [
+        {
+          "scatter": [
+            12,
+            190,
+            140,
+            640
+          ]
+        }
+      ]
+    }
+  ]
+}

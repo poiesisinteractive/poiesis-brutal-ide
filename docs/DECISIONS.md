@@ -82,6 +82,19 @@ Poiesis Brutal IDE est un éditeur de jeux à la manière de Godot ou Unity, con
 | Éditeur de code | **VS Code** (`code --goto fichier:ligne:colonne`). |
 | Export | **Windows autonome dès le J2**, pour faire tester la bataille sans l'éditeur. |
 
+## Choix faits pendant le J2a (2026-11-24)
+
+| Sujet | Choix | Pourquoi |
+| --- | --- | --- |
+| Réécriture | **Reprise de l'esprit et des chiffres du POC**, sans sa structure : données en JSON, sim sur l'ECS, phases parallèles | Parité abandonnée : on garde ce qui fait le jeu (classes, armes, vol, boucliers, dégâts localisés). |
+| Projectiles et effets | **Tables de ressources**, pas d'entités ECS | Des dizaines de milliers d'objets créés et détruits à chaque seconde : le retrait ordonné de l'ECS serait trop coûteux. |
+| Déterminisme parallèle | **Photo des positions en début de pas, effets croisés fusionnés dans l'ordre des tranches, aléa sans état** | Constaté en écrivant le vol : lire la cible pendant qu'un autre thread la déplace rend la sim dépendante des threads. |
+| Point d'impact | **Sur la coque allongée**, réparti sur la longueur | Le POC prenait la sphère englobante : un tir de flanc sur un vaisseau de 3 km tombait à 1,5 km de l'axe et n'usait aucune tourelle (révélé par un test). |
+| Composants à tableaux | **Champs nommés plus indexeur** (`Shields.Front…`, `WeaponBank.W0…`), pas de `InlineArray` | Lisibles et éditables tels quels dans l'inspecteur d'entités. |
+| Hangars | **Reportés** | Les escadrilles demandent leur propre IA de vol ; le J2a se concentre sur les capitaux. |
+| Astres | **Décor** (sphères), sans gravité ni collision | Suffisant pour situer la bataille ; l'évitement viendra avec l'IA. |
+| Cap des flottes | Propriété **`Heading`** (degrés) et anneau de rotation générique | Tout nœud qui a `Position` et `Heading` profite du gizmo, sans code d'éditeur propre au jeu. |
+
 ## Questions encore ouvertes
 
 1. **Audio** : FMOD (bindings BRUTAL, mais licence FMOD à payer et bibliothèques natives non fournies) ou SDL_mixer (choix du POC, gratuit, plus limité) ?

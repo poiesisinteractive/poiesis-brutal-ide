@@ -87,6 +87,27 @@ Règles pour le code du jeu, écrit à la main ou par l'IA : pas d'événement s
 - **`AgentLoop`** vérifie la raison d'arrêt avant d'exécuter un outil : une réponse tronquée ou déclinée n'exécute rien. Tous les résultats d'un tour repartent dans un seul message.
 - **Fournisseurs** : `AnthropicProvider` (SDK officiel `Anthropic`, endpoint beta pour le repli côté serveur) et `OpenAiCompatibleProvider` (OpenAI, Gemini, Ollama, LM Studio). Les réglages par défaut sont dans `ProviderSettings.Defaults`.
 
+## Sim de masse (moteur)
+
+- **`SpatialHash`** : grille uniforme reconstruite à chaque pas, sans allocation. Les candidats sont triés par cellule puis par indice : une requête rend toujours les mêmes candidats dans le même ordre.
+- **`Jobs`** : boucles parallèles sur le `JobScheduler` de BRUTAL, en tranches fixes. Le découpage ne dépend que du nombre d'éléments, jamais du nombre de threads. Le délégué du jeu est lâché à la fin de chaque boucle, pour ne pas bloquer le hot reload.
+- **Règle de déterminisme**, appliquée par Orionum :
+  - une phase parallèle n'écrit que dans ses propres éléments ;
+  - elle lit les autres entités dans une photo prise en début de pas ;
+  - ses effets croisés (tirs, coups) sont rangés par tranche puis appliqués dans l'ordre des tranches ;
+  - l'aléa est une fonction pure de (graine, pas, entité, sel).
+
+  Résultat : même bataille au bit près sur 1 ou 4 threads (test `Same_seed_gives_the_same_battle_whatever_the_number_of_threads`).
+- **Données hors ECS** : retirer une entité d'un stockage coûte O(n), parce que l'ordre est préservé. Les objets éphémères en masse (projectiles, effets) vivent donc dans des tables de ressources compactées une fois par pas. L'ECS garde les vaisseaux.
+- **`ICloneableResource`** : les ressources qui changent pendant la partie sont copiées par `World.Clone()`. C'est ce qui rend les instantanés exacts.
+
+## Débogage en jeu
+
+- **`Schedule`** chronomètre chaque système (dernier pas, moyenne glissante, pic, historique de 240 pas). L'éditeur l'affiche dans le profileur, le runner headless dans son rapport JSON.
+- **`PlaySession`** : `Run(n)` (pas à pas), `TakeSnapshot()` et `Restore()` (copie profonde du monde).
+- **`IWorldVisualizer`** (facultatif, côté jeu) : le jeu dessine dans un `DrawContext` des traits, des étiquettes et des lignes de HUD. Ses aides de débogage sont rangées par canaux que l'éditeur allume ou éteint. Le viewport ajoute les traits à son image, et projette les étiquettes et le HUD en surimpression.
+- **Inspecteur d'entités** : `IComponentStore.GetBoxed` et `SetBoxed`. L'éditeur modifie une copie boxée, structures imbriquées comprises, puis la réécrit.
+
 ## Rendu (Poiesis.Render)
 
 - **`VulkanContext`** : instance, surface, device (GPU dédié de préférence, sinon intégré, sinon logiciel), file unique dessin et présentation, allocateur VMA, envois ponctuels (`Immediate`).

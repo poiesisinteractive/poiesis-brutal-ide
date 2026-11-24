@@ -14,6 +14,9 @@ public interface IComponentStore
 
     /// <summary>Copie boxée du composant d'une entité, pour l'inspecteur en direct (lent : jamais dans la sim).</summary>
     object GetBoxed(int entityIndex);
+
+    /// <summary>Remplace le composant d'une entité par une valeur boxée (édition en direct dans l'éditeur).</summary>
+    void SetBoxed(int entityIndex, object value);
 }
 
 /// <summary>
@@ -110,6 +113,8 @@ public sealed class ComponentStore<T> : IComponentStore
     }
 
     public object GetBoxed(int entityIndex) => Get(entityIndex);
+
+    public void SetBoxed(int entityIndex, object value) => Get(entityIndex) = (T)value;
 
     public IComponentStore Clone()
     {

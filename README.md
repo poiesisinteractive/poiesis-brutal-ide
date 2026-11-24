@@ -12,15 +12,26 @@ BRUTAL fournit l'interop, la mémoire, les maths, les jobs et les bindings natif
 
 ## État
 
-Jalon 1 terminé : l'éditeur tourne (Vulkan et Dear ImGui), et 21 tests passent. Sur la scène d'Orionum, on peut :
+Jalon 2a terminé, 31 tests passent.
 
-- sélectionner et déplacer une flotte dans le viewport (gizmo), éditer ses propriétés dans l'inspecteur, annuler et rétablir ;
-- lancer la partie dans l'éditeur ;
-- modifier une définition de vaisseau ;
-- compiler et recharger le jeu à chaud ;
-- confier une fonctionnalité à l'IA, relire son diff et l'accepter.
+**Orionum** a réécrit sa bataille des capitaux sur le moteur, à partir des données du POC :
+- dix classes de vaisseaux, en JSON éditable ;
+- vol newtonien et croisière ;
+- boucliers à six faces et sous-systèmes ;
+- bordées, lances, canons axiaux, missiles et défense ponctuelle ;
+- dégâts localisés : les tourelles sautent une à une.
 
-Le gameplay d'Orionum reste un placeholder (approche et dégâts continus) : sa réécriture est le jalon 2.
+La sim est déterministe, même graine, même bataille, quel que soit le nombre de threads. Le 500 contre 500 tourne à environ 3 ms par pas.
+
+**L'éditeur** :
+- sélectionne et déplace les flottes (gizmos de translation et de cap), édite leurs propriétés, annule et rétablit ;
+- lance la partie dans l'éditeur, la met en pause, avance pas à pas ;
+- édite les composants en direct, prend des instantanés et y revient ;
+- affiche les dessins de débogage du jeu par canal et le profileur par système ;
+- compile et recharge le jeu à chaud ;
+- confie une fonctionnalité à l'IA, dont on relit et accepte le diff.
+
+![Débogage de la bataille des capitaux : pause, ciblage, portées, entité éditable, profileur](docs/images/debug-capital-battle.png)
 
 ## Prérequis
 
@@ -49,6 +60,9 @@ Le dossier passé en argument est un projet de jeu : il contient un `poiesis.pro
 | Annuler, rétablir | Ctrl+Z, Ctrl+Y |
 | Dupliquer, supprimer | Ctrl+D, Suppr (ou clic droit dans l'arbre) |
 | Jouer, arrêter | F5, Maj+F5 (ou les boutons de la barre de menus) |
+| Pause, un pas de sim | F6, F10 (en pause) |
+| Instantané de la partie | F9 ; « Revenir » dans le panneau Débogage |
+| Tourner une flotte | glisser l'anneau jaune (son cap) |
 | Compiler et recharger le jeu | Ctrl+B |
 | Enregistrer la scène | Ctrl+S |
 | Capture d'écran | F12, dans `<projet>/.poiesis/captures/` |
@@ -61,23 +75,23 @@ La disposition des panneaux est gardée dans `<projet>/.poiesis/imgui.ini` ; « 
 dotnet test
 ```
 
-Jouer la bataille d'exemple sans fenêtre (600 s simulées) :
+Jouer une bataille sans fenêtre et obtenir son issue et le temps de chaque système (ici 500 contre 500, 180 s simulées) :
 
 ```sh
 dotnet build -c Release
-dotnet run --project src/Poiesis.Headless -c Release -- games/Orionum/src/Orionum.Game/bin/Release/net10.0/Orionum.Game.dll games/Orionum/content games/Orionum/content/scenarios/line-battle.scene.json 600
+dotnet run --project src/Poiesis.Headless -c Release -- games/Orionum/src/Orionum.Game/bin/Release/net10.0/Orionum.Game.dll games/Orionum/content games/Orionum/content/scenarios/great-battle.scene.json 180
 ```
 
 ### Vérifier l'éditeur sans écran
 
-L'éditeur tourne aussi sans GPU, avec le Vulkan logiciel de Mesa (lavapipe), et sans écran, sous Xvfb. C'est ainsi qu'il est vérifié dans le cloud et qu'il pourra l'être en CI. `--capture` enregistre une image puis quitte. `--do` joue un petit script : `select:<nom>`, `frame`, `play`, `pause`, `advance:<secondes>`, `about`, `build`, `wait:<images>`, `focus:<panneau>`.
+L'éditeur tourne aussi sans GPU, avec le Vulkan logiciel de Mesa (lavapipe), et sans écran, sous Xvfb. C'est ainsi qu'il est vérifié dans le cloud et qu'il pourra l'être en CI. `--capture` enregistre une image puis quitte. `--do` joue un petit script : `select:<nom>`, `frame`, `play`, `pause`, `step:<n>`, `advance:<secondes>`, `snapshot`, `restore`, `entity:<slot ou nom de flotte>`, `channel:<canal>`, `about`, `build`, `wait:<images>`, `focus:<panneau>`.
 
 ```sh
 sudo apt-get install -y xvfb mesa-vulkan-drivers libvulkan1
 ```
 
 ```sh
-xvfb-run -a -s "-screen 0 1600x900x24" dotnet src/Poiesis.Editor/bin/Debug/net10.0/Poiesis.Editor.dll games/Orionum --splash 0 --frames 40 --capture shot.png --do select:Clans
+xvfb-run -a -s "-screen 0 1600x900x24" dotnet src/Poiesis.Editor/bin/Debug/net10.0/Poiesis.Editor.dll games/Orionum --splash 0 --frames 60 --capture shot.png --do play --do advance:95 --do pause --do entity:Coalition --do channel:Cibles --do frame
 ```
 
 ## Licence

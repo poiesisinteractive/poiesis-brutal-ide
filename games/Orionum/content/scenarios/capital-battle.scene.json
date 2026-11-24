@@ -1,0 +1,82 @@
+{
+  "type": "orionum.scenario",
+  "id": "916b6a82-2696-5682-9645-579da7c1c91a",
+  "name": "Bataille des capitaux",
+  "props": {
+    "seed": 42,
+    "cruiseCutoffKm": 35,
+    "cruiseSpeed": 3000
+  },
+  "children": [
+    {
+      "type": "orionum.fleet",
+      "id": "ee5661f2-3ac2-59a5-98e1-842bf6a30234",
+      "name": "Coalition",
+      "props": {
+        "faction": "coalition",
+        "position": [
+          0,
+          0,
+          -60000
+        ],
+        "heading": 0,
+        "composition": "coalition.standard",
+        "scale": 1,
+        "spacing": 3
+      }
+    },
+    {
+      "type": "orionum.fleet",
+      "id": "8fb87cc0-16af-5e8d-be95-96b5c366410f",
+      "name": "Clans",
+      "props": {
+        "faction": "clans",
+        "position": [
+          0,
+          0,
+          60000
+        ],
+        "heading": 180,
+        "composition": "clans.standard",
+        "scale": 1,
+        "spacing": 3
+      }
+    },
+    {
+      "type": "orionum.body",
+      "id": "4931bd9b-ec60-5f9b-908b-87f30216753a",
+      "name": "Wolf 359 b",
+      "props": {
+        "position": [
+          -160000,
+          -40000,
+          30000
+        ],
+        "radius": 45000,
+        "color": [
+          0.55,
+          0.42,
+          0.36
+        ]
+      }
+    },
+    {
+      "type": "orionum.body",
+      "id": "496a8e02-ffbe-532e-9b2c-14a82f7b2808",
+      "name": "Lune",
+      "props": {
+        "position": [
+          110000,
+          25000,
+          -60000
+        ],
+        "radius": 9000,
+        "color": [
+          0.5,
+          0.5,
+          0.52
+        ]
+      }
+    }
+  ]
+}

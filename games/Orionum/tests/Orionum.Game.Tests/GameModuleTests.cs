@@ -10,14 +10,14 @@ namespace Orionum.Game.Tests;
 /// </summary>
 public class GameModuleTests
 {
-    static readonly string RepoGameRoot = FindGameRoot();
-    static string ContentRoot => Path.Combine(RepoGameRoot, "content");
-    static string ScenePath => Path.Combine(ContentRoot, "scenarios", "line-battle.scene.json");
+    internal static readonly string GameRoot = FindGameRoot();
+    internal static string ContentRoot => Path.Combine(GameRoot, "content");
+    internal static string Scene(string name) => Path.Combine(ContentRoot, "scenarios", name + ".scene.json");
 
-    static string GameDll()
+    internal static string GameDll()
     {
         var config = AppContext.BaseDirectory.Contains($"{Path.DirectorySeparatorChar}Release{Path.DirectorySeparatorChar}") ? "Release" : "Debug";
-        return Path.Combine(RepoGameRoot, "src", "Orionum.Game", "bin", config, "net10.0", "Orionum.Game.dll");
+        return Path.Combine(GameRoot, "src", "Orionum.Game", "bin", config, "net10.0", "Orionum.Game.dll");
     }
 
     static string FindGameRoot()
@@ -29,40 +29,23 @@ public class GameModuleTests
     }
 
     [Fact]
-    public void Line_battle_scene_loads_bakes_and_ends_with_a_winner()
+    public void Capital_battle_scene_loads_from_the_dll_and_bakes_both_fleets_and_bodies()
     {
         var registry = new NodeTypeRegistry();
         using var host = new GameModuleHost(registry, ContentRoot);
         var module = host.Load(GameDll());
-        var scene = new SceneSerializer(registry).Read(File.ReadAllText(ScenePath));
+        var scene = new SceneSerializer(registry).Read(File.ReadAllText(Scene("capital-battle")));
 
         var session = new PlaySession(scene, module);
-        Assert.Equal(12, session.World.EntityCount);
-
-        session.Run(20 * 600);   // 10 minutes de bataille
-        Assert.InRange(session.World.EntityCount, 1, 11);
-    }
-
-    [Fact]
-    public void Same_scene_gives_the_same_outcome()
-    {
-        int Run()
-        {
-            var registry = new NodeTypeRegistry();
-            using var host = new GameModuleHost(registry, ContentRoot);
-            var module = host.Load(GameDll());
-            var session = new PlaySession(new SceneSerializer(registry).Read(File.ReadAllText(ScenePath)), module);
-            session.Run(20 * 120);
-            return session.World.EntityCount;
-        }
-
-        Assert.Equal(Run(), Run());
+        Assert.Equal(25 * 2 + 2, session.World.EntityCount);
+        session.Run(20 * 30);
+        Assert.Equal(7, session.Schedule.Timings.Count);
     }
 
     [Fact]
     public void Hot_reload_keeps_the_edited_scene_and_unloads_the_old_assembly()
     {
-        using var editor = new EditorSession(RepoGameRoot);
+        using var editor = new EditorSession(GameRoot);
         var fleetId = EditAndPlayBeforeReload(editor);
 
         bool unloaded = editor.HotReload(GameDll());
@@ -91,7 +74,7 @@ public class GameModuleTests
     static Guid EditAndPlayBeforeReload(EditorSession editor)
     {
         editor.LoadGameModule(GameDll());
-        editor.OpenScene(ScenePath);
+        editor.OpenScene(Scene("capital-battle"));
         var fleet = editor.Scene.Children[0];
         editor.History.Execute(new RenameCommand(fleet, "Coalition (modifiée)"));
         editor.Selection = fleet;

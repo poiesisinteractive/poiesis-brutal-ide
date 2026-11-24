@@ -1,0 +1,140 @@
+{
+  "id": "clans.battleship",
+  "displayName": "Cuirassé Béhémoth",
+  "faction": "clans",
+  "role": "battleship",
+  "mesh": "heavyHull",
+  "lengthMeters": 1600,
+  "radius": 800,
+  "hull": 270000,
+  "shieldFace": 7600,
+  "shieldRegen": 160,
+  "subsystemHp": 11000,
+  "speed": 44,
+  "accel": 4.2,
+  "turnRateDeg": 3.6,
+  "rcs": 0.09,
+  "angAccel": 0.017,
+  "engage": "broadside",
+  "preferredRange": 16000,
+  "weapons": [
+    {
+      "name": "Bordée bâbord",
+      "kind": "kinetic",
+      "mount": "port",
+      "damage": 520,
+      "rof": 0.2,
+      "range": 19000,
+      "speed": 3800,
+      "arcDeg": 95,
+      "spread": 0.0012,
+      "tracking": 0.06,
+      "turretHp": 3600,
+      "hardpoints": [
+        {
+          "row": [
+            10,
+            200,
+            0,
+            -560,
+            440
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Bordée tribord",
+      "kind": "kinetic",
+      "mount": "starboard",
+      "damage": 520,
+      "rof": 0.2,
+      "range": 19000,
+      "speed": 3800,
+      "arcDeg": 95,
+      "spread": 0.0012,
+      "tracking": 0.06,
+      "turretHp": 3600,
+      "hardpoints": [
+        {
+          "row": [
+            10,
+            -200,
+            0,
+            -560,
+            440
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Tourelles dorsales",
+      "kind": "kinetic",
+      "mount": "turret",
+      "damage": 480,
+      "rof": 0.22,
+      "range": 18000,
+      "speed": 4000,
+      "arcDeg": 180,
+      "spread": 0.0015,
+      "tracking": 0.08,
+      "turretHp": 3600,
+      "hardpoints": [
+        {
+          "row": [
+            4,
+            40,
+            170,
+            -250,
+            300
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Missiles",
+      "kind": "missile",
+      "mount": "turret",
+      "damage": 190,
+      "rof": 0.07692307692307693,
+      "range": 24000,
+      "speed": 950,
+      "arcDeg": 180,
+      "salvo": 16,
+      "turn": 0.9,
+      "turretHp": 2200,
+      "hardpoints": [
+        {
+          "row": [
+            10,
+            0,
+            140,
+            -700,
+            -420
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Défense ponctuelle",
+      "kind": "pointDefence",
+      "mount": "turret",
+      "damage": 3,
+      "rof": 5,
+      "range": 1700,
+      "speed": 0,
+      "arcDeg": 180,
+      "hitChance": 0.26,
+      "turretHp": 600,
+      "hardpoints": [
+        {
+          "scatter": [
+            10,
+            210,
+            150,
+            680
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,70 @@
+{
+  "id": "clans.frigate",
+  "displayName": "Frégate Saigneur",
+  "faction": "clans",
+  "role": "frigate",
+  "mesh": "heavyHull",
+  "lengthMeters": 150,
+  "radius": 70,
+  "hull": 3400,
+  "shieldFace": 300,
+  "shieldRegen": 18,
+  "subsystemHp": 600,
+  "speed": 210,
+  "accel": 50,
+  "turnRateDeg": 36,
+  "rcs": 0.32,
+  "angAccel": 1.0,
+  "engage": "orbit",
+  "preferredRange": 2500,
+  "weapons": [
+    {
+      "name": "Autocanons",
+      "kind": "kinetic",
+      "mount": "turret",
+      "damage": 90,
+      "rof": 1.4,
+      "range": 4500,
+      "speed": 3500,
+      "arcDeg": 180,
+      "spread": 0.004,
+      "tracking": 0.4,
+      "turretHp": 500,
+      "hardpoints": [
+        {
+          "row": [
+            2,
+            0,
+            12,
+            5,
+            30
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Missiles",
+      "kind": "missile",
+      "mount": "turret",
+      "damage": 140,
+      "rof": 0.1,
+      "range": 9000,
+      "speed": 1100,
+      "arcDeg": 180,
+      "salvo": 2,
+      "turn": 0.9,
+      "turretHp": 600,
+      "hardpoints": [
+        {
+          "row": [
+            2,
+            0,
+            10,
+            -30,
+            -20
+          ]
+        }
+      ]
+    }
+  ]
+}

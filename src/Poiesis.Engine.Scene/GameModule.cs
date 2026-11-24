@@ -34,3 +34,15 @@ public sealed class GameModuleContext(NodeTypeRegistry nodeTypes, string content
     /// <summary>Dossier des contenus du jeu (scènes, définitions JSON).</summary>
     public string ContentRoot { get; } = contentRoot;
 }
+
+/// <summary>
+/// Facultatif, implémenté par le module de jeu : dessine par-dessus le monde dans le viewport de l'éditeur
+/// (tirs, rayons, explosions) et, sur des canaux activables, des aides de débogage (portées, cibles, vecteurs).
+/// </summary>
+public interface IWorldVisualizer
+{
+    /// <summary>Les canaux de débogage proposés dans l'éditeur (ex. « Portées », « Cibles »).</summary>
+    IReadOnlyList<string> DebugChannels { get; }
+
+    void Draw(World world, Poiesis.Engine.Debug.DrawContext ctx);
+}

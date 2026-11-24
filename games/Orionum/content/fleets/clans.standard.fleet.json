@@ -1,0 +1,25 @@
+{
+  "id": "clans.standard",
+  "ships": [
+    {
+      "class": "clans.flagship",
+      "count": 1
+    },
+    {
+      "class": "clans.battleship",
+      "count": 4
+    },
+    {
+      "class": "clans.cruiser",
+      "count": 6
+    },
+    {
+      "class": "clans.carrier",
+      "count": 2
+    },
+    {
+      "class": "clans.frigate",
+      "count": 12
+    }
+  ]
+}

@@ -26,13 +26,14 @@ sealed class EditorApp : IDisposable
     readonly EntitiesPanel _entities;
     readonly DataPanel _data;
     readonly AiPanel _ai;
+    readonly DebugPanel _debug;
     readonly PropertyEditor _properties;
     readonly Splash _splash;
     readonly Queue<string> _script;
     bool _reloadAfterBuild;
     bool _showAbout;
     float _speed = 1;
-    int _scriptWait;
+    int _scriptWait = 2;   // le script attend que les fenêtres existent
 
     readonly Action<string> _requestCapture;
 
@@ -56,6 +57,8 @@ sealed class EditorApp : IDisposable
         _entities = new EntitiesPanel(_session);
         _data = new DataPanel(_project, _log, ReloadModule);
         _ai = new AiPanel(_session, _project, _log, () => { _reloadAfterBuild = true; _build.Start(); });
+        _debug = new DebugPanel(_session, _log);
+        _viewport.DebugChannels = _debug.EnabledChannels;
         _splash = new Splash(vk, imgui.Renderer, options.SplashSeconds);
         _script = new Queue<string>(options.Script);
 
@@ -148,6 +151,7 @@ sealed class EditorApp : IDisposable
         _entities.Draw();
         _data.Draw();
         _ai.Draw();
+        _debug.Draw();
         if (_showAbout)
             About();
     }
@@ -249,6 +253,12 @@ sealed class EditorApp : IDisposable
         if (ImGui.Button("■ Arrêter"u8))
             _session.Stop();
         ImGui.EndDisabled();
+        ImGui.BeginDisabled(_session.PlayState != PlayState.Paused);
+        if (ImGui.Button("▶|"u8))
+            _session.StepOnce();
+        ImGui.EndDisabled();
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+            ImGui.SetItemTooltip("Un pas de sim, en pause (F10)"u8);
         ImGui.SetNextItemWidth(90);
         if (ImGui.SliderFloat("##vitesse"u8, ref _speed, 0.125f, 64f, "×%.3g"u8, ImGuiSliderFlags.Logarithmic) && _session.Play is { } p && _session.PlayState == PlayState.Playing)
             p.Clock.TimeScale = _speed;
@@ -279,6 +289,15 @@ sealed class EditorApp : IDisposable
             var path = Path.Combine(_project.Root, ".poiesis", "captures", $"{DateTime.Now:yyyyMMdd-HHmmss-fff}.png");
             _requestCapture(path);
             _log.Info("éditeur", $"Capture : {Path.GetRelativePath(_project.Root, path)}");
+        }
+        if (_session.Play is { } running && !io.WantTextInput)
+        {
+            if (ImGui.IsKeyPressed(ImGuiKey.F6, false))
+                _session.TogglePause();
+            if (ImGui.IsKeyPressed(ImGuiKey.F10))
+                _session.StepOnce();
+            if (ImGui.IsKeyPressed(ImGuiKey.F9, false))
+                _debug.Take(running);
         }
         if (ImGui.IsKeyPressed(ImGuiKey.F5, false))
         {
@@ -331,6 +350,7 @@ sealed class EditorApp : IDisposable
         ImGui.Internal.DockBuilderDockWindow("Viewport"u8, center);
         ImGui.Internal.DockBuilderDockWindow("Inspecteur"u8, right);
         ImGui.Internal.DockBuilderDockWindow("IA"u8, rightBottom);
+        ImGui.Internal.DockBuilderDockWindow("Débogage"u8, rightBottom);
         ImGui.Internal.DockBuilderDockWindow("Console"u8, bottom);
         ImGui.Internal.DockBuilderDockWindow("Entités"u8, bottom);
         ImGui.Internal.DockBuilderDockWindow("Données"u8, bottom);
@@ -373,6 +393,11 @@ sealed class EditorApp : IDisposable
                 case "frame": _viewport.FrameSelection(); break;
                 case "play": Play(); break;
                 case "pause": _session.TogglePause(); break;
+                case "step": for (int i = 0; i < int.Parse(arg.Length > 0 ? arg : "1"); i++) _session.StepOnce(); break;
+                case "snapshot": if (_session.Play is { } sp) _debug.Take(sp); break;
+                case "restore": if (_session.Play is { } rp && rp.Snapshots.Count > 0) rp.Restore(rp.Snapshots[^1]); break;
+                case "channel": _debug.EnabledChannels.Add(arg); break;
+                case "entity": _session.SelectedEntity = int.TryParse(arg, out var slot) ? slot : FirstLiveEntityOf(arg); break;
                 case "advance": _session.Play?.Run((int)(double.Parse(arg, System.Globalization.CultureInfo.InvariantCulture) / 0.05)); break;
                 case "speed": _speed = float.Parse(arg, System.Globalization.CultureInfo.InvariantCulture); break;
                 case "about": _showAbout = true; break;
@@ -382,6 +407,17 @@ sealed class EditorApp : IDisposable
                 default: _log.Warn("script", $"Commande inconnue : {cmd}"); break;
             }
         }
+    }
+
+    /// <summary>La première entité vivante créée par le nœud nommé <paramref name="nodeName"/> (script de démonstration).</summary>
+    int FirstLiveEntityOf(string nodeName)
+    {
+        if (_session.Play is not { } play)
+            return -1;
+        foreach (var (entity, owner) in play.Bake.OwnerOf.OrderBy(kv => kv.Key.Index))
+            if (play.World.IsAlive(entity) && _session.FindNode(owner)?.Name == nodeName)
+                return entity.Index;
+        return -1;
     }
 
     public void Dispose()

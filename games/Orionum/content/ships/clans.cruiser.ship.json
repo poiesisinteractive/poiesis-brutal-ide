@@ -1,9 +1,116 @@
 {
   "id": "clans.cruiser",
-  "displayName": "Mastodonte",
+  "displayName": "Croiseur Brise-Os",
+  "faction": "clans",
+  "role": "cruiser",
+  "mesh": "heavyHull",
   "lengthMeters": 650,
-  "hull": 14000,
-  "cruiseSpeed": 800,
-  "weaponRange": 18000,
-  "weaponDps": 130
+  "radius": 320,
+  "hull": 68000,
+  "shieldFace": 3000,
+  "shieldRegen": 80,
+  "subsystemHp": 4000,
+  "speed": 85,
+  "accel": 11,
+  "turnRateDeg": 8,
+  "rcs": 0.14,
+  "angAccel": 0.07,
+  "engage": "broadside",
+  "preferredRange": 12000,
+  "weapons": [
+    {
+      "name": "Bordée bâbord",
+      "kind": "kinetic",
+      "mount": "port",
+      "damage": 330,
+      "rof": 0.26,
+      "range": 16000,
+      "speed": 3500,
+      "arcDeg": 95,
+      "spread": 0.0012,
+      "tracking": 0.06,
+      "turretHp": 2000,
+      "hardpoints": [
+        {
+          "row": [
+            5,
+            80,
+            10,
+            -180,
+            180
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Bordée tribord",
+      "kind": "kinetic",
+      "mount": "starboard",
+      "damage": 330,
+      "rof": 0.26,
+      "range": 16000,
+      "speed": 3500,
+      "arcDeg": 95,
+      "spread": 0.0012,
+      "tracking": 0.06,
+      "turretHp": 2000,
+      "hardpoints": [
+        {
+          "row": [
+            5,
+            -80,
+            10,
+            -180,
+            180
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Missiles",
+      "kind": "missile",
+      "mount": "turret",
+      "damage": 150,
+      "rof": 0.08333333333333333,
+      "range": 21000,
+      "speed": 900,
+      "arcDeg": 180,
+      "salvo": 10,
+      "turn": 0.9,
+      "turretHp": 1300,
+      "hardpoints": [
+        {
+          "row": [
+            6,
+            0,
+            50,
+            -240,
+            -100
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Défense ponctuelle",
+      "kind": "pointDefence",
+      "mount": "turret",
+      "damage": 3,
+      "rof": 5,
+      "range": 1600,
+      "speed": 0,
+      "arcDeg": 180,
+      "hitChance": 0.26,
+      "turretHp": 600,
+      "hardpoints": [
+        {
+          "scatter": [
+            4,
+            90,
+            60,
+            280
+          ]
+        }
+      ]
+    }
+  ]
 }

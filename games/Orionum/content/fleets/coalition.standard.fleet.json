@@ -1,0 +1,25 @@
+{
+  "id": "coalition.standard",
+  "ships": [
+    {
+      "class": "coalition.flagship",
+      "count": 1
+    },
+    {
+      "class": "coalition.battleship",
+      "count": 4
+    },
+    {
+      "class": "coalition.cruiser",
+      "count": 6
+    },
+    {
+      "class": "coalition.carrier",
+      "count": 2
+    },
+    {
+      "class": "coalition.frigate",
+      "count": 12
+    }
+  ]
+}

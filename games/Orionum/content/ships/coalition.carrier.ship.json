@@ -1,0 +1,70 @@
+{
+  "id": "coalition.carrier",
+  "displayName": "Porteur Firmament",
+  "faction": "coalition",
+  "role": "carrier",
+  "mesh": "hull",
+  "lengthMeters": 1000,
+  "radius": 500,
+  "hull": 100000,
+  "shieldFace": 11000,
+  "shieldRegen": 220,
+  "subsystemHp": 6000,
+  "speed": 62,
+  "accel": 6,
+  "turnRateDeg": 5,
+  "rcs": 0.12,
+  "angAccel": 0.03,
+  "engage": "standoff",
+  "preferredRange": 24000,
+  "weapons": [
+    {
+      "name": "Tourelles dorsales",
+      "kind": "laser",
+      "mount": "turret",
+      "damage": 300,
+      "rof": 0.3,
+      "range": 18000,
+      "speed": 5000,
+      "arcDeg": 180,
+      "spread": 0.0015,
+      "tracking": 0.2,
+      "turretHp": 2500,
+      "hardpoints": [
+        {
+          "row": [
+            4,
+            0,
+            110,
+            -250,
+            250
+          ]
+        }
+      ],
+      "vsShield": 1.5,
+      "vsHull": 0.7
+    },
+    {
+      "name": "Défense ponctuelle",
+      "kind": "pointDefence",
+      "mount": "turret",
+      "damage": 3,
+      "rof": 6,
+      "range": 1800,
+      "speed": 0,
+      "arcDeg": 180,
+      "hitChance": 0.3,
+      "turretHp": 600,
+      "hardpoints": [
+        {
+          "scatter": [
+            10,
+            150,
+            100,
+            430
+          ]
+        }
+      ]
+    }
+  ]
+}

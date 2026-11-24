@@ -1,0 +1,68 @@
+{
+  "id": "clans.carrier",
+  "displayName": "Porteur Ruche-Mère",
+  "faction": "clans",
+  "role": "carrier",
+  "mesh": "heavyHull",
+  "lengthMeters": 1100,
+  "radius": 560,
+  "hull": 120000,
+  "shieldFace": 5600,
+  "shieldRegen": 120,
+  "subsystemHp": 6500,
+  "speed": 58,
+  "accel": 5.5,
+  "turnRateDeg": 4.6,
+  "rcs": 0.11,
+  "angAccel": 0.028,
+  "engage": "standoff",
+  "preferredRange": 24000,
+  "weapons": [
+    {
+      "name": "Missiles",
+      "kind": "missile",
+      "mount": "turret",
+      "damage": 160,
+      "rof": 0.08333333333333333,
+      "range": 22000,
+      "speed": 950,
+      "arcDeg": 180,
+      "salvo": 10,
+      "turn": 0.9,
+      "turretHp": 1800,
+      "hardpoints": [
+        {
+          "row": [
+            6,
+            0,
+            120,
+            -300,
+            300
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Défense ponctuelle",
+      "kind": "pointDefence",
+      "mount": "turret",
+      "damage": 3,
+      "rof": 5,
+      "range": 1600,
+      "speed": 0,
+      "arcDeg": 180,
+      "hitChance": 0.26,
+      "turretHp": 600,
+      "hardpoints": [
+        {
+          "scatter": [
+            8,
+            170,
+            110,
+            480
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -103,7 +103,8 @@ public sealed class World
 
     /// <summary>
     /// Copie profonde des entités et des composants (structs blittables, copie de tableaux).
-    /// Les ressources sont partagées par référence : elles doivent être immuables ou clonées par leur propriétaire.
+    /// Les ressources qui changent pendant la partie (RNG, état de la bataille…) implémentent
+    /// <see cref="ICloneableResource"/> et sont copiées ; les autres (données statiques) sont partagées.
     /// </summary>
     public World Clone()
     {
@@ -120,7 +121,7 @@ public sealed class World
         foreach (var (type, store) in _stores)
             copy._stores.Add(type, store.Clone());
         foreach (var (type, res) in _resources)
-            copy._resources.Add(type, res);
+            copy._resources.Add(type, res is ICloneableResource c ? c.CloneResource() : res);
         return copy;
     }
 
@@ -129,4 +130,10 @@ public sealed class World
         if (!IsAlive(e))
             throw new InvalidOperationException($"{e} n'existe plus");
     }
+}
+
+/// <summary>Ressource dont l'état évolue pendant la partie : copiée par <see cref="World.Clone"/> (instantanés, projections).</summary>
+public interface ICloneableResource
+{
+    object CloneResource();
 }
