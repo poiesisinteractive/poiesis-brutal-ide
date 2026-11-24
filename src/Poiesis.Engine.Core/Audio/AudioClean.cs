@@ -102,6 +102,30 @@ public static class AudioClean
         return output;
     }
 
+    /// <summary>
+    /// Transpose un son comme une bande ralentie ou accélérée : <paramref name="pitch"/> 0,5 le rend une octave plus grave
+    /// et deux fois plus long (c'est ainsi qu'un blaster devient un canon lourd). Interpolation cubique (Hermite).
+    /// </summary>
+    public static float[] Resample(float[] samples, float pitch)
+    {
+        if (MathF.Abs(pitch - 1) < 1e-4f || samples.Length == 0)
+            return samples;
+        pitch = Math.Clamp(pitch, 0.1f, 4f);
+        int n = (int)(samples.Length / pitch);
+        var output = new float[n];
+        float At(int i) => samples[Math.Clamp(i, 0, samples.Length - 1)];
+        for (int i = 0; i < n; i++)
+        {
+            double x = i * (double)pitch;
+            int k = (int)x;
+            float t = (float)(x - k);
+            float y0 = At(k - 1), y1 = At(k), y2 = At(k + 1), y3 = At(k + 2);
+            float c1 = 0.5f * (y2 - y0), c2 = y0 - 2.5f * y1 + 2 * y2 - 0.5f * y3, c3 = 0.5f * (y3 - y0) + 1.5f * (y1 - y2);
+            output[i] = ((c3 * t + c2) * t + c1) * t + y1;
+        }
+        return output;
+    }
+
     /// <summary>Valeur efficace de <paramref name="count"/> échantillons à partir de <paramref name="from"/>.</summary>
     public static float Rms(float[] samples, int from, int count)
     {

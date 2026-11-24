@@ -12,9 +12,9 @@ BRUTAL fournit l'interop, la mémoire, les maths, les jobs et les bindings natif
 
 ## État
 
-Jalon 4 terminé, 81 tests passent. Au jalon 4b, la bataille a pris son allure de jeu :
+Jalon 4 terminé, 82 tests passent. Au jalon 4b, la bataille a pris son allure de jeu :
 - **effets** : rendu HDR et bloom en Vulkan, traçantes et halos, impacts de bouclier en hexagones, étincelles sur les coques, explosions ;
-- **son** avec SDL_mixer : chaque tir, impact et explosion joue un cue, placé dans l'espace par rapport à la caméra. Chaque cue tire au hasard parmi plusieurs enregistrements (24 sons CC0 de Freesound pour la bataille), et un limiteur empêche le mixage de saturer quand tout tire en même temps. Dans le panneau **Sons** de l'éditeur, on cherche des sons sur Freesound, on les écoute et on les ajoute ; on peut aussi importer un fichier ou en générer avec ElevenLabs. Chaque son ajouté est nettoyé (silence coupé, volume homogène) ;
+- **son** avec SDL_mixer : chaque tir, impact et explosion joue un cue, placé dans l'espace par rapport à la caméra. Les sons sont dans l'esprit des space operas des années 1970-80 : blasters enregistrés sur un ressort métallique (la technique d'origine), turbolasers obtenus en les ralentissant, canons ioniques, impacts sur bouclier déflecteur. Chaque cue tire au hasard parmi plusieurs enregistrements (27 sons Freesound, CC0 ou CC BY, crédités dans le jeu), et un limiteur empêche le mixage de saturer quand tout tire en même temps. Dans le panneau **Sons** de l'éditeur, on cherche des sons sur Freesound, on les écoute et on les ajoute ; on peut aussi importer un fichier ou en générer avec ElevenLabs. Chaque son ajouté est nettoyé (silence coupé, volume homogène) ;
 - **HUD** : horloge, forces des deux camps, fiche du vaisseau choisi (coque, six faces de bouclier, tourelles, sous-systèmes), dans le jeu exporté comme dans l'éditeur pendant le Play ;
 - **menus** du jeu exporté : choix du scénario, pause, options (volumes, bloom), écran de fin avec le bilan.
 
@@ -125,7 +125,7 @@ Le dossier passé en argument est un projet de jeu : il contient un `poiesis.pro
 | Caméras enregistrées | Ctrl+1 à 9 pour enregistrer, 1 à 9 pour revenir (Affichage > Caméras) |
 | Modifier la scène avec l'IA | panneau IA, onglet Scène : demander, relire le fantôme, cocher, Appliquer |
 | Régler et écouter les sons | panneau Sons (en bas) : choisir la banque et la cue, régler, Écouter, Enregistrer ; « Muet en jeu » |
-| Ajouter un son à une cue | panneau Sons > Ajouter une variante : onglet Freesound (chercher, Écouter, +), Fichier (WAV, OGG, MP3, FLAC) ou ElevenLabs (décrire, Générer) |
+| Ajouter un son à une cue | panneau Sons > Ajouter une variante : onglet Freesound (chercher, Écouter, +), Fichier (WAV, OGG, MP3, FLAC) ou ElevenLabs (décrire, Générer) ; « Hauteur » transpose à l'import (×0,6 : un blaster devient un canon lourd) |
 
 L'éditeur de code se règle dans `<projet>/.poiesis/settings.json` (VS Code par défaut) :
 
@@ -176,7 +176,7 @@ dotnet run --project src/Poiesis.Headless -c Release -- games/Orionum/src/Orionu
 
 ### Vérifier l'éditeur sans écran
 
-L'éditeur tourne aussi sans GPU, avec le Vulkan logiciel de Mesa (lavapipe), et sans écran, sous Xvfb. C'est ainsi qu'il est vérifié dans le cloud et qu'il pourra l'être en CI. `--capture` enregistre une image puis quitte. `--do` joue un petit script : `select:<nom>`, `frame`, `play`, `pause`, `step:<n>`, `advance:<secondes>`, `snapshot`, `restore`, `entity:<slot ou nom de flotte>`, `channel:<canal>`, `about`, `build`, `wait:<images>`, `focus:<panneau>`, `open:<scène>`, `save`, `copy`, `paste`, `instantiate:<scène>`, `move:<de>><vers>`, `set:<Propriété>=<json>`, `tool:<commande>`, `grid`, `content-select:<chemin>`, `feature:<titre>|<description>`, `wait-review`, `accept`, `select-all`, `mode:<move|rotate|scale>`, `local`, `snap`, `align:<x|y|z>`, `distribute:<x|y|z>`, `camera-save:<n>`, `camera:<n>`, `scene-ask:<demande>`, `wait-scene`, `scene-apply`, `scene-reject`, `sound:<cue>`, `sound-cue:<cue>[|recherche]`, `freesound:<cue>|<id>[|durée max.]`, `wait-sounds`, `zoom:<facteur>`, `capture:<png>`, `exit`, `tests[:filtre]`, `open-first-location`, `export:<windows|linux>`, `series:<n>`, `provider:<nom>`, `ask:<question>`.
+L'éditeur tourne aussi sans GPU, avec le Vulkan logiciel de Mesa (lavapipe), et sans écran, sous Xvfb. C'est ainsi qu'il est vérifié dans le cloud et qu'il pourra l'être en CI. `--capture` enregistre une image puis quitte. `--do` joue un petit script : `select:<nom>`, `frame`, `play`, `pause`, `step:<n>`, `advance:<secondes>`, `snapshot`, `restore`, `entity:<slot ou nom de flotte>`, `channel:<canal>`, `about`, `build`, `wait:<images>`, `focus:<panneau>`, `open:<scène>`, `save`, `copy`, `paste`, `instantiate:<scène>`, `move:<de>><vers>`, `set:<Propriété>=<json>`, `tool:<commande>`, `grid`, `content-select:<chemin>`, `feature:<titre>|<description>`, `wait-review`, `accept`, `select-all`, `mode:<move|rotate|scale>`, `local`, `snap`, `align:<x|y|z>`, `distribute:<x|y|z>`, `camera-save:<n>`, `camera:<n>`, `scene-ask:<demande>`, `wait-scene`, `scene-apply`, `scene-reject`, `sound:<cue>`, `sound-cue:<cue>[|recherche]`, `freesound:<cue>|<id>[|durée max.[|hauteur]]`, `wait-sounds`, `zoom:<facteur>`, `capture:<png>`, `exit`, `tests[:filtre]`, `open-first-location`, `export:<windows|linux>`, `series:<n>`, `provider:<nom>`, `ask:<question>`.
 
 ```sh
 sudo apt-get install -y xvfb mesa-vulkan-drivers libvulkan1

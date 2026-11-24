@@ -12,24 +12,31 @@
         "variants": [
           {
             "file": "audio/battle/canon-1.wav",
-            "source": "Freesound 621003 « Cannon explosion sound 4 »",
-            "author": "SamsterBirdies",
+            "source": "Freesound 440661 « Classic Laser Pew »",
+            "author": "SeanSecret",
             "license": "CC0",
-            "url": "https://freesound.org/people/SamsterBirdies/sounds/621003/"
+            "url": "https://freesound.org/people/SeanSecret/sounds/440661/"
           },
           {
             "file": "audio/battle/canon-2.wav",
-            "source": "Freesound 621002 « Cannon explosion sound 3 »",
-            "author": "SamsterBirdies",
-            "license": "CC0",
-            "url": "https://freesound.org/people/SamsterBirdies/sounds/621002/"
+            "source": "Freesound 742583 « Sci-Fi Gunshot - Heavy Blast Weapon »",
+            "author": "Headphaze",
+            "license": "CC BY 4.0",
+            "url": "https://freesound.org/people/Headphaze/sounds/742583/"
           },
           {
             "file": "audio/battle/canon-3.wav",
-            "source": "Freesound 127845 « Tank fire Mixed.wav »",
-            "author": "GaryQ",
+            "source": "Freesound 376694 « Laser », hauteur ×0.60",
+            "author": "Daleonfire",
             "license": "CC0",
-            "url": "https://freesound.org/people/GaryQ/sounds/127845/"
+            "url": "https://freesound.org/people/Daleonfire/sounds/376694/"
+          },
+          {
+            "file": "audio/battle/canon-4.wav",
+            "source": "Freesound 334224 « blaster.wav », hauteur ×0.55",
+            "author": "jradcoolness",
+            "license": "CC0",
+            "url": "https://freesound.org/people/jradcoolness/sounds/334224/"
           }
         ],
         "file": null,
@@ -47,24 +54,31 @@
         "variants": [
           {
             "file": "audio/battle/laser-1.wav",
-            "source": "Freesound 193427 « Projectile Shoot »",
-            "author": "unfa",
+            "source": "Freesound 334227 « laser.wav »",
+            "author": "jradcoolness",
             "license": "CC0",
-            "url": "https://freesound.org/people/unfa/sounds/193427/"
+            "url": "https://freesound.org/people/jradcoolness/sounds/334227/"
           },
           {
             "file": "audio/battle/laser-2.wav",
-            "source": "Freesound 531861 « ScifiHeavyBlasterShot.wav »",
-            "author": "SuperPhat",
+            "source": "Freesound 334224 « blaster.wav »",
+            "author": "jradcoolness",
             "license": "CC0",
-            "url": "https://freesound.org/people/SuperPhat/sounds/531861/"
+            "url": "https://freesound.org/people/jradcoolness/sounds/334224/"
           },
           {
             "file": "audio/battle/laser-3.wav",
-            "source": "Freesound 466834 « enhanced blaster.wav »",
-            "author": "MikeE63",
+            "source": "Freesound 376694 « Laser »",
+            "author": "Daleonfire",
             "license": "CC0",
-            "url": "https://freesound.org/people/MikeE63/sounds/466834/"
+            "url": "https://freesound.org/people/Daleonfire/sounds/376694/"
+          },
+          {
+            "file": "audio/battle/laser-4.wav",
+            "source": "Freesound 122976 « BlasterOutgoing2.wav »",
+            "author": "zimbot",
+            "license": "CC BY 4.0",
+            "url": "https://freesound.org/people/zimbot/sounds/122976/"
           }
         ],
         "file": null,
@@ -82,17 +96,24 @@
         "variants": [
           {
             "file": "audio/battle/lance-1.wav",
+            "source": "Freesound 881260 « Ion Cannon Blast »",
+            "author": "Qvantor",
+            "license": "CC0",
+            "url": "https://freesound.org/people/Qvantor/sounds/881260/"
+          },
+          {
+            "file": "audio/battle/lance-2.wav",
+            "source": "Freesound 814049 « Ion Cannon »",
+            "author": "qubodup",
+            "license": "CC0",
+            "url": "https://freesound.org/people/qubodup/sounds/814049/"
+          },
+          {
+            "file": "audio/battle/lance-3.wav",
             "source": "Freesound 440144 « SciFi Gun - Plasma Hyper Lance 2 »",
             "author": "dpren",
             "license": "CC0",
             "url": "https://freesound.org/people/dpren/sounds/440144/"
-          },
-          {
-            "file": "audio/battle/lance-2.wav",
-            "source": "Freesound 707270 « Powerful sci fi weapon »",
-            "author": "neopolitansixth",
-            "license": "CC0",
-            "url": "https://freesound.org/people/neopolitansixth/sounds/707270/"
           }
         ],
         "file": null,
@@ -145,10 +166,10 @@
           },
           {
             "file": "audio/battle/missile-2.wav",
-            "source": "Freesound 151858 « Missile firing fl.mp3 »",
-            "author": "NHMWretched",
+            "source": "Freesound 540068 « Missile Blast 3 »",
+            "author": "magnuswaker",
             "license": "CC0",
-            "url": "https://freesound.org/people/NHMWretched/sounds/151858/"
+            "url": "https://freesound.org/people/magnuswaker/sounds/540068/"
           }
         ],
         "file": null,
@@ -166,24 +187,24 @@
         "variants": [
           {
             "file": "audio/battle/bouclier-1.wav",
+            "source": "Freesound 459782 « Deflector Shield »",
+            "author": "Metzik",
+            "license": "CC BY 4.0",
+            "url": "https://freesound.org/people/Metzik/sounds/459782/"
+          },
+          {
+            "file": "audio/battle/bouclier-2.wav",
+            "source": "Freesound 440668 « Laser Impact »",
+            "author": "SeanSecret",
+            "license": "CC0",
+            "url": "https://freesound.org/people/SeanSecret/sounds/440668/"
+          },
+          {
+            "file": "audio/battle/bouclier-3.wav",
             "source": "Freesound 787866 « Force Field Knock »",
             "author": "modusmogulus",
             "license": "CC0",
             "url": "https://freesound.org/people/modusmogulus/sounds/787866/"
-          },
-          {
-            "file": "audio/battle/bouclier-2.wav",
-            "source": "Freesound 568651 « Electric Impact »",
-            "author": "sefu2000",
-            "license": "CC0",
-            "url": "https://freesound.org/people/sefu2000/sounds/568651/"
-          },
-          {
-            "file": "audio/battle/bouclier-3.wav",
-            "source": "Freesound 812737 « Sound Design Elements Impact SFX PS 071 »",
-            "author": "AudioPapkin",
-            "license": "CC0",
-            "url": "https://freesound.org/people/AudioPapkin/sounds/812737/"
           }
         ],
         "file": null,
@@ -201,24 +222,24 @@
         "variants": [
           {
             "file": "audio/battle/impact-1.wav",
+            "source": "Freesound 234082 « Lasgun impact »",
+            "author": "211redman112",
+            "license": "CC BY 4.0",
+            "url": "https://freesound.org/people/211redman112/sounds/234082/"
+          },
+          {
+            "file": "audio/battle/impact-2.wav",
+            "source": "Freesound 842939 « Double Heavy Scifi Impact »",
+            "author": "TannerSound",
+            "license": "CC BY 4.0",
+            "url": "https://freesound.org/people/TannerSound/sounds/842939/"
+          },
+          {
+            "file": "audio/battle/impact-3.wav",
             "source": "Freesound 455183 « metal hit 2.wav »",
             "author": "deleted_user_4541234",
             "license": "CC0",
             "url": "https://freesound.org/people/deleted_user_4541234/sounds/455183/"
-          },
-          {
-            "file": "audio/battle/impact-2.wav",
-            "source": "Freesound 351371 « HeavyBulletPing.mp3 »",
-            "author": "wilhellboy",
-            "license": "CC0",
-            "url": "https://freesound.org/people/wilhellboy/sounds/351371/"
-          },
-          {
-            "file": "audio/battle/impact-3.wav",
-            "source": "Freesound 614062 « Heavy Metal Impact »",
-            "author": "magnuswaker",
-            "license": "CC0",
-            "url": "https://freesound.org/people/magnuswaker/sounds/614062/"
           }
         ],
         "file": null,
@@ -227,7 +248,7 @@
     },
     {
       "id": "tourelle",
-      "volume": 1.0,
+      "volume": 1,
       "pitchVariation": 0.06,
       "maxVoices": 3,
       "minInterval": 0.08,
@@ -236,24 +257,24 @@
         "variants": [
           {
             "file": "audio/battle/tourelle-1.wav",
+            "source": "Freesound 389706 « Sci Fi Explosion 1.wav »",
+            "author": "suspensiondigital",
+            "license": "CC0",
+            "url": "https://freesound.org/people/suspensiondigital/sounds/389706/"
+          },
+          {
+            "file": "audio/battle/tourelle-2.wav",
+            "source": "Freesound 389711 « Sci Fi Explosion 2.wav »",
+            "author": "suspensiondigital",
+            "license": "CC0",
+            "url": "https://freesound.org/people/suspensiondigital/sounds/389711/"
+          },
+          {
+            "file": "audio/battle/tourelle-3.wav",
             "source": "Freesound 807381 « Sci-Fi Grenade explosion »",
             "author": "Jean_Filho",
             "license": "CC0",
             "url": "https://freesound.org/people/Jean_Filho/sounds/807381/"
-          },
-          {
-            "file": "audio/battle/tourelle-2.wav",
-            "source": "Freesound 522696 « Explosion, Short, Impact, Break gravel, reverb »",
-            "author": "julianmateo_",
-            "license": "CC0",
-            "url": "https://freesound.org/people/julianmateo_/sounds/522696/"
-          },
-          {
-            "file": "audio/battle/tourelle-3.wav",
-            "source": "Freesound 200466 « Short Explosion »",
-            "author": "wubitog",
-            "license": "CC0",
-            "url": "https://freesound.org/people/wubitog/sounds/200466/"
           }
         ],
         "file": null,
@@ -271,24 +292,24 @@
         "variants": [
           {
             "file": "audio/battle/explosion-1.wav",
+            "source": "Freesound 389710 « Sci Fi Explosion 3.wav »",
+            "author": "suspensiondigital",
+            "license": "CC0",
+            "url": "https://freesound.org/people/suspensiondigital/sounds/389710/"
+          },
+          {
+            "file": "audio/battle/explosion-2.wav",
             "source": "Freesound 366091 « Huge Explosion Part 1 - Shockwave »",
             "author": "bevibeldesign",
             "license": "CC0",
             "url": "https://freesound.org/people/bevibeldesign/sounds/366091/"
           },
           {
-            "file": "audio/battle/explosion-2.wav",
+            "file": "audio/battle/explosion-3.wav",
             "source": "Freesound 563010 « Explosion.mp3 »",
             "author": "florianreichelt",
             "license": "CC0",
             "url": "https://freesound.org/people/florianreichelt/sounds/563010/"
-          },
-          {
-            "file": "audio/battle/explosion-3.wav",
-            "source": "Freesound 587887 « Explosion in a can »",
-            "author": "SamsterBirdies",
-            "license": "CC0",
-            "url": "https://freesound.org/people/SamsterBirdies/sounds/587887/"
           }
         ],
         "file": null,

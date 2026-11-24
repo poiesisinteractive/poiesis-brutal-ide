@@ -9,9 +9,9 @@ namespace Poiesis.Audio;
 public static class SoundImport
 {
     /// <summary>Écrit le son et rend sa variante (chemin relatif à <c>content/</c>), ou null s'il n'y avait que du silence.</summary>
-    public static SoundVariant? Write(string contentRoot, string bankId, string cueId, float[] mono, SoundVariant meta, float maxSeconds = 4)
+    public static SoundVariant? Write(string contentRoot, string bankId, string cueId, float[] mono, SoundVariant meta, float maxSeconds = 4, float pitch = 1)
     {
-        var clean = AudioClean.Clean(mono, Synthesizer.SampleRate, maxSeconds);
+        var clean = AudioClean.Clean(AudioClean.Resample(mono, pitch), Synthesizer.SampleRate, maxSeconds);
         if (clean.Length == 0)
             return null;
         string folder = Path.Combine("audio", Safe(bankId));
@@ -24,8 +24,12 @@ public static class SoundImport
     }
 
     /// <summary>Importe un fichier son (WAV, OGG, MP3, FLAC).</summary>
-    public static SoundVariant? FromFile(string contentRoot, string bankId, string cueId, string path, SoundVariant meta, float maxSeconds = 4) =>
-        Write(contentRoot, bankId, cueId, AudioEngine.Decode(path), meta, maxSeconds);
+    public static SoundVariant? FromFile(string contentRoot, string bankId, string cueId, string path, SoundVariant meta, float maxSeconds = 4, float pitch = 1) =>
+        Write(contentRoot, bankId, cueId, AudioEngine.Decode(path), meta, maxSeconds, pitch);
+
+    /// <summary>Mention ajoutée à l'origine d'un son transposé.</summary>
+    public static string PitchNote(float pitch) =>
+        MathF.Abs(pitch - 1) < 1e-3f ? "" : $", hauteur ×{pitch.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)}";
 
     /// <summary>
     /// Efface les fichiers de <c>audio/&lt;banque&gt;/</c> qu'aucune cue ne désigne plus (après la suppression d'une

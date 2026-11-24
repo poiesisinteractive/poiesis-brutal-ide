@@ -49,6 +49,7 @@ sealed class SoundPanel
     float _genDuration = 1.5f;
     float _genInfluence = 0.5f;
     float _maxSeconds = 4;
+    float _pitch = 1;
 
     public SoundPanel(AudioEngine audio, LogBuffer log, string cacheDir)
     {
@@ -368,6 +369,10 @@ sealed class SoundPanel
         ImGui.SetNextItemWidth(120);
         ImGui.SliderFloat("Durée max. (s)"u8, ref _maxSeconds, 0.3f, 10, "%.1f"u8);
         Widgets.HelpMarker("Le son importé est coupé à cette durée (avec un fondu), débarrassé du silence et ramené au volume des autres.");
+        ImGui.SameLine();
+        ImGui.SetNextItemWidth(120);
+        ImGui.SliderFloat("Hauteur (×)"u8, ref _pitch, 0.4f, 1.6f, "%.2f"u8);
+        Widgets.HelpMarker("Transpose le son à l'import, comme une bande ralentie : ×0,6 rend un blaster plus grave et plus long, un canon lourd.");
         if (ImGui.BeginTabBar("sources"u8))
         {
             if (ImGui.BeginTabItem("Freesound"u8))
@@ -484,18 +489,18 @@ sealed class SoundPanel
             string path = await _freesound!.DownloadPreviewAsync(r, _cacheDir);
             return SoundImport.FromFile(_audio.ContentRoot, _bank!.Id, cueId, path, new SoundVariant
             {
-                Source = $"Freesound {r.Id} « {r.Name} »",
+                Source = $"Freesound {r.Id} « {r.Name} »{SoundImport.PitchNote(_pitch)}",
                 Author = r.Author,
                 License = r.LicenseName,
                 Url = r.Url,
-            }, _maxSeconds);
+            }, _maxSeconds, _pitch);
         });
         Run("Import", task, () => AddVariant(cueId, task.Result));
     }
 
     void ImportFile(string cueId, string path, SoundVariant meta)
     {
-        var task = Task.Run(() => SoundImport.FromFile(_audio.ContentRoot, _bank!.Id, cueId, path, meta, _maxSeconds));
+        var task = Task.Run(() => SoundImport.FromFile(_audio.ContentRoot, _bank!.Id, cueId, path, meta with { Source = meta.Source + SoundImport.PitchNote(_pitch) }, _maxSeconds, _pitch));
         Run("Import", task, () => AddVariant(cueId, task.Result));
     }
 
@@ -526,9 +531,9 @@ sealed class SoundPanel
             var samples = await _elevenLabs!.GenerateAsync(prompt, duration, influence);
             return SoundImport.Write(_audio.ContentRoot, _bank!.Id, cueId, samples, new SoundVariant
             {
-                Source = $"ElevenLabs « {prompt} »",
+                Source = $"ElevenLabs « {prompt} »{SoundImport.PitchNote(_pitch)}",
                 License = "généré",
-            }, _maxSeconds);
+            }, _maxSeconds, _pitch);
         });
         Run("Génération", task, () => AddVariant(cueId, task.Result));
     }
@@ -557,7 +562,7 @@ sealed class SoundPanel
     }
 
     /// <summary>Pour le script de l'éditeur : importe un son Freesound dans une cue de la banque ouverte, et attend.</summary>
-    public void ImportFreesoundNow(string cueId, int soundId, float maxSeconds)
+    public void ImportFreesoundNow(string cueId, int soundId, float maxSeconds, float pitch = 1)
     {
         if (_freesound is null || _bank is null)
         {
@@ -572,11 +577,11 @@ sealed class SoundPanel
             string path = _freesound.DownloadPreviewAsync(sound, _cacheDir).GetAwaiter().GetResult();
             AddVariant(cueId, SoundImport.FromFile(_audio.ContentRoot, _bank.Id, cueId, path, new SoundVariant
             {
-                Source = $"Freesound {sound.Id} « {sound.Name} »",
+                Source = $"Freesound {sound.Id} « {sound.Name} »{SoundImport.PitchNote(pitch)}",
                 Author = sound.Author,
                 License = sound.LicenseName,
                 Url = sound.Url,
-            }, maxSeconds));
+            }, maxSeconds, pitch));
         }
         finally
         {

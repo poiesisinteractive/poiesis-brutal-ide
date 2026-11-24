@@ -22,6 +22,7 @@ string? capture = null, startScreen = null;
 int frames = 60, selectAtStart = -1;
 double splash = 2.5, advance = 0;
 bool showCredits = false;
+List<string> soundCredits = [];
 for (int i = 0; i < args.Length; i++)
 {
     switch (args[i])
@@ -70,6 +71,7 @@ void Run()
     using var renderer = new SceneRenderer(vk, Swapchain.FramesInFlight);
     using var logo = new Splash(vk, imgui.Renderer, splash);
     using var audio = new AudioEngine(contentRoot, m => Console.Error.WriteLine($"son : {m}"));
+    soundCredits = AudioEngine.SoundCredits(contentRoot);
     var textures = new ViewportTextures(imgui.Renderer, renderer);
     var view = new WorldView(renderer);
 
@@ -491,6 +493,14 @@ void Credits(Splash logo, ref bool open)
     ImGui.Text("BRUTAL game development framework is Copyright (c) 2024 Ahwoo Limited."u8);
     ImGui.Text("www.ahwoo.com/brutal"u8);
     ImGui.Spacing();
+    if (soundCredits.Count > 0)
+    {
+        ImGui.SeparatorText("Sons"u8);
+        if (ImGui.BeginChild("sons"u8, new float2(0, 140)))
+            foreach (var line in soundCredits)
+                ImGui.TextWrapped(line);
+        ImGui.EndChild();
+    }
     ImGui.PushStyleColor(ImGuiCol.Text, EditorTheme.Muted);
     ImGui.TextWrapped("Moteur Poiesis, son SDL3_mixer. Licences des composants tiers : NOTICE.txt et dossier LICENSES. F1 pour fermer."u8);
     ImGui.PopStyleColor();

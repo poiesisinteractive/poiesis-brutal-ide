@@ -77,11 +77,26 @@ public class AudioTests
                 var (samples, channels, rate) = Wav.Read16(Path.Combine(content, v.File));
                 Assert.Equal((1, Synthesizer.SampleRate), (channels, rate));
                 Assert.InRange(samples.Max(MathF.Abs), AudioClean.Db(-12), AudioClean.Db(AudioClean.PeakCeilingDb) + 0.01f);
-                Assert.Equal("CC0", v.License);
+                Assert.Contains(v.License, new[] { "CC0", "CC BY 3.0", "CC BY 4.0" });   // jamais « non commercial »
                 Assert.NotNull(v.Author);
                 Assert.StartsWith("https://freesound.org/", v.Url);
             }
         });
+    }
+
+    [Fact]
+    public void Resampling_lowers_the_pitch_and_stretches_the_sound()
+    {
+        const int rate = Synthesizer.SampleRate;
+        var tone = Tone(1, 0.5f, frequency: 1000);
+        var lower = AudioClean.Resample(tone, 0.5f);
+        Assert.InRange(lower.Length, 2 * rate - 2, 2 * rate);
+        int crossings = 0;
+        for (int i = 1; i < rate; i++)
+            if (lower[i - 1] < 0 != lower[i] < 0)
+                crossings++;
+        Assert.InRange(crossings, 990, 1010);      // 500 Hz : 1 000 passages par zéro par seconde
+        Assert.Same(tone, AudioClean.Resample(tone, 1));
     }
 
     static float[] Tone(float seconds, float amplitude, float frequency = 220, int rate = Synthesizer.SampleRate) =>

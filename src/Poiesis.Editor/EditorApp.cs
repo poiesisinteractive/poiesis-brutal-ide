@@ -740,9 +740,11 @@ sealed class EditorApp : IDisposable
                 }
                 case "freesound":
                 {
-                    // freesound:<cue>|<id>[|durée max.] : importe un son Freesound comme variante de la cue.
+                    // freesound:<cue>|<id>[|durée max.[|hauteur]] : importe un son Freesound comme variante de la cue.
                     var soundArgs = arg.Split('|');
-                    _sounds.ImportFreesoundNow(soundArgs[0], int.Parse(soundArgs[1]), soundArgs.Length > 2 ? float.Parse(soundArgs[2], System.Globalization.CultureInfo.InvariantCulture) : 4);
+                    var inv = System.Globalization.CultureInfo.InvariantCulture;
+                    _sounds.ImportFreesoundNow(soundArgs[0], int.Parse(soundArgs[1]),
+                        soundArgs.Length > 2 ? float.Parse(soundArgs[2], inv) : 4, soundArgs.Length > 3 ? float.Parse(soundArgs[3], inv) : 1);
                     break;
                 }
                 case "wait-sounds":

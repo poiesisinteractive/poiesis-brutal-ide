@@ -168,6 +168,8 @@ Poiesis Brutal IDE est un éditeur de jeux à la manière de Godot ou Unity, con
 | Format des sons importés | **WAV 16 bits mono 44,1 kHz**, nettoyé | Lu partout sans décodeur ; mono parce que le jeu place le son lui-même (panoramique) ; ~90 Ko par seconde, 3,5 Mo pour la bataille. |
 | Volume des sons | **Chaque son ramené à -14 dBFS** (tranche de 50 ms la plus forte), crête sous -1 dBFS ; le volume de la cue fait le mixage | Deux variantes d'une cue sonnent pareil ; un son trop fort à la source ne domine plus. |
 | Saturation du mixage | **Limiteur** sur la sortie (SDL_mixer post-mix) | Des dizaines de sons superposés écrêtaient en grésillement : c'était une part du « son horrible ». |
+| Style des sons | **« À la Star Wars », sans aucun son des films** : blasters faits comme ceux des films (ressort ou câble frappé, captés au micro contact), turbolasers en ralentissant ces mêmes enregistrements | Demande de l'utilisateur. Les sons des films appartiennent à Lucasfilm : les résultats Freesound qui citent Star Wars (souvent des extraits) sont écartés d'office ; on garde des créations originales dont la description dit comment elles ont été faites. Choisis à l'analyse (le spectrogramme montre la dispersion du ressort), pas à l'écoute. |
+| Licences acceptées | **CC0 et CC BY**, jamais NC | CC BY oblige à créditer : l'écran Crédits du joueur liste l'auteur, la licence et l'adresse de chaque son, lus dans les banques. |
 | Génération de sons | **ElevenLabs** (`/v1/sound-generation`), clé `ELEVENLABS_API_KEY` dans l'en-tête `xi-api-key` | Pour les sons introuvables. Pas utilisé pour la banque actuelle : dans le cloud, la clé enregistrée était envoyée dans `Authorization`, qu'ElevenLabs refuse. |
 
 ## Questions encore ouvertes

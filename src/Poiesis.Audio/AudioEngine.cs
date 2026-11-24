@@ -136,6 +136,37 @@ public sealed unsafe class AudioEngine : IDisposable
     public IEnumerable<string> BankFiles() =>
         Directory.Exists(AudioDir) ? Directory.EnumerateFiles(AudioDir, "*.cues.json").Order(StringComparer.Ordinal) : [];
 
+    /// <summary>
+    /// Les crédits des sons enregistrés (auteur, licence, adresse), une ligne par son d'origine, d'après les banques.
+    /// Obligatoires pour les sons sous licence CC BY ; donnés aussi pour les CC0, par courtoisie.
+    /// </summary>
+    public static List<string> SoundCredits(string contentRoot)
+    {
+        var lines = new List<string>();
+        var dir = Path.Combine(contentRoot, "audio");
+        if (!Directory.Exists(dir))
+            return lines;
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var file in Directory.EnumerateFiles(dir, "*.cues.json").Order(StringComparer.Ordinal))
+        {
+            try
+            {
+                var bank = ValueCodec.Read<CueBank>(File.ReadAllText(file));
+                foreach (var v in bank.Cues.SelectMany(c => c.Sound.Variants ?? []))
+                    if (v.Author is not null && seen.Add(v.Url ?? v.Source ?? v.File))
+                    {
+                        string name = v.Source is { } s && s.IndexOf('«') is int a and >= 0 && s.IndexOf('»', a) is int b and > 0 ? s[(a + 1)..b].Trim() : v.Source ?? v.File;
+                        lines.Add($"« {name} » par {v.Author} ({v.License}){(v.Url is null ? "" : $", {v.Url}")}");
+                    }
+            }
+            catch (Exception)
+            {
+                // Une banque illisible n'empêche pas d'afficher les autres crédits.
+            }
+        }
+        return lines;
+    }
+
     /// <summary>Relit les banques (après une modification dans l'éditeur) et refait les sons.</summary>
     public void ReloadBanks()
     {
