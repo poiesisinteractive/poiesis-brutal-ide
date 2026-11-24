@@ -212,10 +212,12 @@ Appliquer ── ScenePlan.Apply(ops cochées) ── une CompositeCommand sur l
 ```text
 sim (code série) ── SoundEvents.Play(cue, position, volume) ── anneau de 1024 événements (ressource du monde)
 hôte (éditeur, joueur) ── AudioEngine.Update(monde, curseur, Listener) ── VoicePolicy (voix, intervalle) ── gain × panoramique
-   └─ banques content/audio/*.cues.json ── Synthesizer.Render (ou fichier) ── MIX_Audio préparé une fois ── 32 pistes SDL_mixer
+   └─ banques content/audio/*.cues.json ── variantes WAV (ou Synthesizer.Render) ── MIX_Audio préparés une fois ── 32 pistes SDL_mixer
+                                                                                                  └─ post-mix : Limiter (gain lié, relâche 150 ms, arrondi doux)
+panneau Sons ── FreesoundClient / fichier / ElevenLabsSounds ── AudioEngine.Decode (MIX_AudioDecoder) ── AudioClean ── SoundImport (WAV + SoundVariant)
 ```
 
-  `CueBank`, `Synthesizer` et `VoicePolicy` sont dans le moteur, sans SDL, donc testés seuls ; `Poiesis.Audio` ne fait que jouer. Le panneau Sons écrit le JSON puis recharge les banques.
+  `CueBank`, `Synthesizer`, `VoicePolicy`, `AudioClean`, `Wav` et `Limiter` sont dans le moteur, sans SDL, donc testés seuls ; `Poiesis.Audio` joue et décode ; les clients Freesound et ElevenLabs sont dans `Poiesis.AI/Sounds`. Le panneau Sons écrit le JSON puis recharge les banques ; il efface à l'enregistrement les WAV de `audio/<banque>/` qu'aucune cue ne désigne plus.
 - **HUD** : `IGameHud.DrawHud(World, HudContext)` ; le contexte donne le rectangle de la vue, la projection monde → écran, l'entité choisie (modifiable par le HUD), l'heure, la vitesse et `InEditor`. Le joueur s'en sert à la place de `DrawOverlay` ; l'éditeur le dessine pendant le Play.
 - **Joueur** : écrans Menu, En jeu, Pause, Options, Fin ; les scénarios viennent de `content/scenarios` ; options dans `user/options.json`.
 

@@ -30,11 +30,34 @@ public sealed record Synth
     public float Drive { get; init; }
 }
 
-/// <summary>Ce que joue une cue : un fichier (relatif à <c>content/</c>) ou un son de synthèse.</summary>
+/// <summary>
+/// Un enregistrement d'une cue (relatif à <c>content/</c>, en WAV, OGG, MP3 ou FLAC), et d'où il vient : la banque garde
+/// l'auteur, la licence et l'adresse de chaque son importé, pour les crédits.
+/// </summary>
+public sealed record SoundVariant
+{
+    public string File { get; init; } = "";
+    public string? Source { get; init; }
+    public string? Author { get; init; }
+    public string? License { get; init; }
+    public string? Url { get; init; }
+}
+
+/// <summary>
+/// Ce que joue une cue : une ou plusieurs variantes enregistrées, tirées au hasard (jamais deux fois de suite la même),
+/// sinon un fichier seul, sinon un son de synthèse.
+/// </summary>
 public sealed record Sound
 {
+    public List<SoundVariant>? Variants { get; init; }
     public string? File { get; init; }
     public Synth? Synth { get; init; }
+
+    /// <summary>Les fichiers à jouer : les variantes, ou le fichier seul.</summary>
+    public IEnumerable<string> Files() =>
+        Variants is { Count: > 0 } ? Variants.Select(v => v.File).Where(f => f.Length > 0)
+        : File is { Length: > 0 } f ? [f]
+        : [];
 }
 
 /// <summary>

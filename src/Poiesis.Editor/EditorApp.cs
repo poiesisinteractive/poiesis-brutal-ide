@@ -49,6 +49,7 @@ sealed class EditorApp : IDisposable
     int _scriptWait = 2;
     bool _waitReview;
     bool _waitScene;   // le script attend que les fenêtres existent
+    bool _waitSounds;  // le script attend la fin d'une recherche ou d'un import de sons
 
     readonly Action<string> _requestCapture;
 
@@ -85,7 +86,7 @@ sealed class EditorApp : IDisposable
         _thumbnails = new ThumbnailService(vk, imgui.Renderer, _session, _extensions, _log, _project.Root);
         _content.Thumbnails = _thumbnails;
         _audio = new Poiesis.Audio.AudioEngine(_project.ContentRoot, m => _log.Warn("son", m));
-        _sounds = new SoundPanel(_audio, _log);
+        _sounds = new SoundPanel(_audio, _log, Path.Combine(_project.Root, ".poiesis", "cache", "sounds"));
         _viewport.Extensions = _extensions;
         _viewport.Cameras = new CameraBookmarks(_project.Root);
         _inspector.Extensions = _extensions.DrawInspectors;
@@ -656,6 +657,12 @@ sealed class EditorApp : IDisposable
                 return;
             _waitScene = false;
         }
+        if (_waitSounds)
+        {
+            if (_sounds.Working)
+                return;
+            _waitSounds = false;
+        }
         if (_scriptWait > 0)
         {
             _scriptWait--;
@@ -725,6 +732,22 @@ sealed class EditorApp : IDisposable
                 case "grid": _content.Grid = arg != "off"; break;
                 case "content-select": _content.Select(arg); break;
                 case "sound": _audio.Preview(arg); break;
+                case "sound-cue":
+                {
+                    var soundArgs = arg.Split('|', 2);
+                    _sounds.Show(soundArgs[0], soundArgs.Length > 1 ? soundArgs[1] : null);
+                    break;
+                }
+                case "freesound":
+                {
+                    // freesound:<cue>|<id>[|durée max.] : importe un son Freesound comme variante de la cue.
+                    var soundArgs = arg.Split('|');
+                    _sounds.ImportFreesoundNow(soundArgs[0], int.Parse(soundArgs[1]), soundArgs.Length > 2 ? float.Parse(soundArgs[2], System.Globalization.CultureInfo.InvariantCulture) : 4);
+                    break;
+                }
+                case "wait-sounds":
+                    _waitSounds = true;
+                    return;
                 case "tool":
                     if (!_extensions.RunMenu(arg))
                         _log.Warn("script", $"Commande d'extension inconnue : {arg}");

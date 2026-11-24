@@ -23,7 +23,9 @@ public sealed unsafe class AudioEngine : IDisposable
     readonly MixMixer _mixer;
     readonly MixTrack[] _tracks;
     readonly double[] _trackEnds = new double[Voices];
-    readonly Dictionary<string, (Cue Cue, MixAudio Audio, double Duration)> _cues = new(StringComparer.Ordinal);
+    readonly Dictionary<string, PreparedCue> _cues = new(StringComparer.Ordinal);
+    readonly Limiter _limiter = new();
+    readonly MixPostMixHandler _postMix;
     readonly List<MixAudio> _owned = new();
     readonly VoicePolicy _policy = new();
     readonly List<SoundEvent> _pending = new();
@@ -32,6 +34,9 @@ public sealed unsafe class AudioEngine : IDisposable
     DateTime _banksStamp;
 
     public bool Available { get; }
+
+    /// <summary>Le dossier <c>content/</c> du jeu.</summary>
+    public string ContentRoot => _contentRoot;
 
     /// <summary>Le pilote audio de SDL en service (« pulseaudio », « wasapi », « dummy »…).</summary>
     public string Driver { get; } = "aucun";
@@ -60,10 +65,23 @@ public sealed unsafe class AudioEngine : IDisposable
 
     public IReadOnlyCollection<string> CueIds => _cues.Keys;
 
+    /// <summary>Gain du limiteur du mixage (1 : rien n'est limité).</summary>
+    public float LimiterGain => _limiter.Gain;
+
+    /// <summary>Une cue prête : ses variantes chargées, leur durée, et la dernière jouée (pour ne pas la répéter).</summary>
+    sealed class PreparedCue(Cue cue)
+    {
+        public Cue Cue { get; } = cue;
+        public List<(MixAudio Audio, double Duration)> Variants { get; } = new();
+        public int Last = -1;
+        public double Duration => Variants.Count == 0 ? 0 : Variants.Max(v => v.Duration);
+    }
+
     public AudioEngine(string contentRoot, Action<string> log)
     {
         _contentRoot = contentRoot;
         _log = log;
+        _postMix = (MixMixer _, in SdlAudioSpec spec, Span<float> pcm) => _limiter.Process(pcm, spec.channels, spec.freq);
         try
         {
             if (!TryInit())
@@ -80,6 +98,7 @@ public sealed unsafe class AudioEngine : IDisposable
             Driver = Sdl.PInvoke.GetCurrentAudioDriver() ?? "?";
             Available = true;
             _mixer.SetGain(_master);
+            SdlMixer.SetPostMixCallback(_mixer, _postMix);
             ReloadBanks();
         }
         catch (Exception ex)
@@ -153,28 +172,96 @@ public sealed unsafe class AudioEngine : IDisposable
             ReloadBanks();
     }
 
-    (Cue, MixAudio, double)? Prepare(Cue cue)
+    PreparedCue? Prepare(Cue cue)
     {
+        var prepared = new PreparedCue(cue);
         try
         {
-            if (cue.Sound.Synth is { } synth)
+            foreach (var file in cue.Sound.Files())
+            {
+                try
+                {
+                    var audio = _mixer.LoadAudio(Path.Combine(_contentRoot, file), true);
+                    _owned.Add(audio);
+                    prepared.Variants.Add((audio, audio.FramesToMS(audio.GetDuration()) / 1000.0));
+                }
+                catch (Exception ex)
+                {
+                    _log($"Cue « {cue.Id} », {file} : {ex.Message}");
+                }
+            }
+            if (prepared.Variants.Count == 0 && cue.Sound.Synth is { } synth)
             {
                 var samples = Synthesizer.Render(synth);
-                var audio = Raw(samples);
-                return (cue, audio, samples.Length / (double)Synthesizer.SampleRate);
-            }
-            if (cue.Sound.File is { Length: > 0 } file)
-            {
-                var audio = _mixer.LoadAudio(Path.Combine(_contentRoot, file), true);
-                _owned.Add(audio);
-                return (cue, audio, audio.FramesToMS(audio.GetDuration()) / 1000.0);
+                prepared.Variants.Add((Raw(samples), samples.Length / (double)Synthesizer.SampleRate));
             }
         }
         catch (Exception ex)
         {
             _log($"Cue « {cue.Id} » : {ex.Message}");
         }
-        return null;
+        return prepared.Variants.Count > 0 ? prepared : null;
+    }
+
+    /// <summary>
+    /// Décode un fichier son (WAV, OGG, MP3, FLAC) en mono flottant à 44,1 kHz, pour l'importer ou en voir la forme
+    /// d'onde. Ne demande pas de carte son : seulement SDL_mixer.
+    /// </summary>
+    public static float[] Decode(string path, int sampleRate = Synthesizer.SampleRate)
+    {
+        if (!TryInit())
+            throw new InvalidOperationException("SDL_mixer indisponible");
+        var decoder = SdlMixer.CreateAudioDecoder(path, 0);
+        try
+        {
+            var spec = new SdlAudioSpec { format = SdlAudioFormat.F32, channels = 2, freq = sampleRate };
+            var all = new List<float>();
+            var buffer = new float[16384];
+            fixed (float* p = buffer)
+            {
+                while (true)
+                {
+                    int bytes = decoder.DecodeAudio(p, buffer.Length * sizeof(float), &spec);
+                    if (bytes <= 0)
+                        break;
+                    all.AddRange(buffer.AsSpan(0, bytes / sizeof(float)));
+                }
+            }
+            return AudioClean.ToMono(System.Runtime.InteropServices.CollectionsMarshal.AsSpan(all), 2);
+        }
+        finally
+        {
+            decoder.Dispose();
+        }
+    }
+
+    /// <summary>Écoute d'un fichier (aperçu d'un son trouvé avant de l'importer), au centre.</summary>
+    public void PreviewFile(string path, float volume = 1)
+    {
+        if (!Available)
+            return;
+        var audio = _mixer.LoadAudio(path, true);
+        _owned.Add(audio);
+        var track = FreeTrack();
+        track.SetAudio(audio);
+        track.SetGain(volume);
+        track.SetFrequencyRatio(1);
+        track.SetStereo(null);
+        track.Play(0);
+    }
+
+    /// <summary>Écoute d'une variante précise d'une cue.</summary>
+    public bool PreviewVariant(string cueId, int variant)
+    {
+        if (!Available || !_cues.TryGetValue(cueId, out var c) || variant < 0 || variant >= c.Variants.Count)
+            return false;
+        var track = FreeTrack();
+        track.SetAudio(c.Variants[variant].Audio);
+        track.SetGain(Math.Clamp(c.Cue.Volume, 0, 1));
+        track.SetFrequencyRatio(1);
+        track.SetStereo(null);
+        track.Play(0);
+        return true;
     }
 
     MixAudio Raw(float[] samples)
@@ -228,6 +315,8 @@ public sealed unsafe class AudioEngine : IDisposable
         var track = FreeTrack();
         track.SetAudio(audio);
         track.SetGain(volume);
+        track.SetFrequencyRatio(1);
+        track.SetStereo(null);
         track.Play(0);
     }
 
@@ -236,17 +325,22 @@ public sealed unsafe class AudioEngine : IDisposable
         if (!_cues.TryGetValue(cueId, out var c))
             return false;
         double now = _clock.Elapsed.TotalSeconds;
-        if (!ignoreLimits && !_policy.TryStart(c.Cue, now, c.Duration))
+        int variant = c.Variants.Count == 1 ? 0 : _random.Next(c.Variants.Count - 1);
+        if (c.Variants.Count > 1 && variant >= c.Last && c.Last >= 0)
+            variant++;   // jamais deux fois de suite la même variante
+        var (audio, duration) = c.Variants[variant];
+        if (!ignoreLimits && !_policy.TryStart(c.Cue, now, duration))
             return false;
+        c.Last = variant;
         var track = FreeTrack();
-        track.SetAudio(c.Audio);
+        track.SetAudio(audio);
         track.SetGain(Math.Clamp(gain, 0, 2));
         var gains = new MixStereoGains { left = pan.Left, right = pan.Right };
         track.SetStereo(&gains);
         float variation = c.Cue.PitchVariation;
         track.SetFrequencyRatio(1 + (float)(_random.NextDouble() * 2 - 1) * variation);
         track.Play(0);
-        _trackEnds[Array.IndexOf(_tracks, track)] = now + c.Duration;
+        _trackEnds[Array.IndexOf(_tracks, track)] = now + duration;
         Played++;
         return true;
     }
@@ -277,6 +371,7 @@ public sealed unsafe class AudioEngine : IDisposable
         if (!Available)
             return;
         _mixer.StopAllTracks(0);
+        SdlMixer.SetPostMixCallback(_mixer, null);
         _mixer.Dispose();   // détruit aussi les pistes
         foreach (var a in _owned)
             a.Dispose();

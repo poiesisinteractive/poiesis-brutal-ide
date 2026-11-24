@@ -61,14 +61,98 @@ public class AudioTests
     }
 
     [Fact]
-    public void Orionum_cue_bank_reads_and_every_synth_is_audible()
+    public void Orionum_cue_bank_plays_recorded_variants_that_exist_and_are_credited()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
         while (dir is not null && !Directory.Exists(Path.Combine(dir.FullName, "games", "Orionum")))
             dir = dir.Parent;
-        var file = Path.Combine(dir!.FullName, "games", "Orionum", "content", "audio", "battle.cues.json");
-        var bank = ValueCodec.Read<CueBank>(File.ReadAllText(file));
+        var content = Path.Combine(dir!.FullName, "games", "Orionum", "content");
+        var bank = ValueCodec.Read<CueBank>(File.ReadAllText(Path.Combine(content, "audio", "battle.cues.json")));
         Assert.Contains(bank.Cues, c => c.Id == "explosion");
-        Assert.All(bank.Cues, c => Assert.True(Synthesizer.Render(c.Sound.Synth!).Max(MathF.Abs) > 0.1f, c.Id));
+        Assert.All(bank.Cues, c =>
+        {
+            Assert.True(c.Sound.Variants!.Count >= 2, $"{c.Id} : au moins deux variantes");
+            foreach (var v in c.Sound.Variants!)
+            {
+                var (samples, channels, rate) = Wav.Read16(Path.Combine(content, v.File));
+                Assert.Equal((1, Synthesizer.SampleRate), (channels, rate));
+                Assert.InRange(samples.Max(MathF.Abs), AudioClean.Db(-12), AudioClean.Db(AudioClean.PeakCeilingDb) + 0.01f);
+                Assert.Equal("CC0", v.License);
+                Assert.NotNull(v.Author);
+                Assert.StartsWith("https://freesound.org/", v.Url);
+            }
+        });
+    }
+
+    static float[] Tone(float seconds, float amplitude, float frequency = 220, int rate = Synthesizer.SampleRate) =>
+        Enumerable.Range(0, (int)(seconds * rate)).Select(i => amplitude * MathF.Sin(MathF.Tau * frequency * i / rate)).ToArray();
+
+    [Fact]
+    public void Cleaning_trims_silence_bounds_duration_and_evens_out_loudness()
+    {
+        const int rate = Synthesizer.SampleRate;
+        var quiet = new float[rate / 2].Concat(Tone(1, 0.05f)).Concat(new float[rate]).ToArray();
+        var loud = Tone(6, 0.9f);
+
+        var a = AudioClean.Clean(quiet, rate);
+        var b = AudioClean.Clean(loud, rate, maxSeconds: 2);
+
+        Assert.InRange(a.Length, rate * 0.99, rate * 1.02);              // demi-seconde de tête et seconde de queue coupées
+        Assert.Equal(2 * rate, b.Length);                                 // borné à 2 s
+        Assert.Equal(0, b[^1], 3);                                        // fondu de sortie
+        float loudA = AudioClean.Rms(a, rate / 4, rate / 20), loudB = AudioClean.Rms(b, rate / 4, rate / 20);
+        Assert.Equal(AudioClean.TargetLoudnessDb, 20 * MathF.Log10(loudA), 0.5);
+        Assert.Equal(loudA, loudB, 0.01);                                 // même intensité, quel que soit le niveau d'origine
+        Assert.Empty(AudioClean.Clean(new float[rate], rate));            // le silence ne s'importe pas
+    }
+
+    [Fact]
+    public void Mono_keeps_out_of_phase_stereo_audible()
+    {
+        var tone = Tone(0.2f, 0.5f);
+        var inPhase = tone.SelectMany(v => new[] { v, v }).ToArray();
+        var opposed = tone.SelectMany(v => new[] { v, -v * 0.9f }).ToArray();
+
+        Assert.Equal(tone, AudioClean.ToMono(inPhase, 2));
+        var mono = AudioClean.ToMono(opposed, 2);
+        Assert.Equal(tone.Max(MathF.Abs), mono.Max(MathF.Abs), 3);         // le canal gauche, pas une somme qui s'annule
+    }
+
+    [Fact]
+    public void The_limiter_holds_a_pile_up_under_full_scale_then_lets_go()
+    {
+        const int rate = 48000;
+        var limiter = new Limiter();
+        var pileUp = Tone(0.5f, 3f, rate: rate).SelectMany(v => new[] { v, v }).ToArray();   // trois fois la pleine échelle
+        limiter.Process(pileUp, 2, rate);
+        Assert.True(pileUp.Max(MathF.Abs) < 1);
+        Assert.True(limiter.Gain < 0.35f);
+
+        var calm = Tone(1, 0.2f, rate: rate).SelectMany(v => new[] { v, v }).ToArray();
+        limiter.Process(calm, 2, rate);
+        Assert.True(limiter.Gain > 0.99f);                               // relâché en moins d'une seconde
+        Assert.Equal(0.2f, calm[^2000..].Max(MathF.Abs), 2);              // un son calme passe intact
+    }
+
+    [Fact]
+    public void Wav_files_round_trip_and_variants_win_over_single_files()
+    {
+        string path = Path.Combine(Path.GetTempPath(), $"poiesis-{Guid.NewGuid():N}.wav");
+        try
+        {
+            var tone = Tone(0.1f, 0.5f);
+            Wav.WriteMono16(path, tone, Synthesizer.SampleRate);
+            var (samples, channels, rate) = Wav.Read16(path);
+            Assert.Equal((1, Synthesizer.SampleRate, tone.Length), (channels, rate, samples.Length));
+            Assert.All(samples.Zip(tone), p => Assert.True(MathF.Abs(p.First - p.Second) < 2e-4f));   // 16 bits et dither
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+
+        Assert.Equal(["a.wav", "b.wav"], new Sound { File = "old.wav", Variants = [new() { File = "a.wav" }, new() { File = "b.wav" }] }.Files());
+        Assert.Equal(["old.wav"], new Sound { File = "old.wav" }.Files());
+        Assert.Empty(new Sound { Synth = new Synth() }.Files());
     }
 }

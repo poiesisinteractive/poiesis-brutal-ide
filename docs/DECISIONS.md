@@ -164,6 +164,11 @@ Poiesis Brutal IDE est un éditeur de jeux à la manière de Godot ou Unity, con
 | Tonemap | **Identité jusqu'à 0,8, courbe douce au-dessus** | Les couleurs de l'UI et des coques restent celles choisies ; seuls les effets HDR sont comprimés. |
 | Halos de loin | **Taille minimale à l'écran, intensité réduite d'autant** | Sans cela, une vue lointaine n'est qu'une tache blanche. |
 | UI de jeu | **ImGui** pour le HUD et les menus (question ouverte n° 3) | Comme le POC ; le même HUD sert dans l'éditeur. Une UI dédiée viendra si le jeu la demande. |
+| Sons de la bataille (révisé) | **Enregistrements Freesound CC0**, 2 ou 3 variantes par cue ; la synthèse reste pour les essais | Retour de l'utilisateur : la synthèse sonnait « immonde ». CC0 : pas d'attribution obligatoire, utilisable dans un jeu vendu ; auteur et adresse gardés quand même dans la banque. Choisis sans les écouter (pas de carte son dans le cloud) : sur la note, puis écartés à l'analyse (saturation, bruit de fond, bande étroite, stéréo en opposition de phase). À réécouter et remplacer au besoin depuis le panneau. |
+| Format des sons importés | **WAV 16 bits mono 44,1 kHz**, nettoyé | Lu partout sans décodeur ; mono parce que le jeu place le son lui-même (panoramique) ; ~90 Ko par seconde, 3,5 Mo pour la bataille. |
+| Volume des sons | **Chaque son ramené à -14 dBFS** (tranche de 50 ms la plus forte), crête sous -1 dBFS ; le volume de la cue fait le mixage | Deux variantes d'une cue sonnent pareil ; un son trop fort à la source ne domine plus. |
+| Saturation du mixage | **Limiteur** sur la sortie (SDL_mixer post-mix) | Des dizaines de sons superposés écrêtaient en grésillement : c'était une part du « son horrible ». |
+| Génération de sons | **ElevenLabs** (`/v1/sound-generation`), clé `ELEVENLABS_API_KEY` dans l'en-tête `xi-api-key` | Pour les sons introuvables. Pas utilisé pour la banque actuelle : dans le cloud, la clé enregistrée était envoyée dans `Authorization`, qu'ElevenLabs refuse. |
 
 ## Questions encore ouvertes
 
