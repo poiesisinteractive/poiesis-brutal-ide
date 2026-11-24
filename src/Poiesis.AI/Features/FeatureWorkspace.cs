@@ -25,13 +25,29 @@ public sealed class FeatureWorkspace
 
     public static async Task<FeatureWorkspace> CreateAsync(string repoRoot, string featureTitle, CancellationToken ct = default)
     {
-        var slug = Slugify(featureTitle);
+        // Une feature du même nom a déjà sa branche (refusée, gardée) : on suffixe.
+        var baseSlug = Slugify(featureTitle);
+        var slug = baseSlug;
+        for (int i = 2; await BranchExists(repoRoot, $"feature/{slug}", ct) || Directory.Exists(WorktreePath(repoRoot, slug)); i++)
+            slug = $"{baseSlug}-{i}";
         var branch = $"feature/{slug}";
-        var path = System.IO.Path.Combine(repoRoot, ".poiesis", "worktrees", slug);
+        var path = WorktreePath(repoRoot, slug);
 
         var head = await Git(repoRoot, ct, "rev-parse", "HEAD");
         await Git(repoRoot, ct, "worktree", "add", "-b", branch, path, "HEAD");
         return new FeatureWorkspace(repoRoot, slug, path, branch, head.Trim());
+    }
+
+    static string WorktreePath(string repoRoot, string slug) => System.IO.Path.Combine(repoRoot, ".poiesis", "worktrees", slug);
+
+    static async Task<bool> BranchExists(string repoRoot, string branch, CancellationToken ct) =>
+        (await ProcessRunner.RunAsync("git", ["rev-parse", "--verify", "--quiet", $"refs/heads/{branch}"], repoRoot, TimeSpan.FromSeconds(30), ct)).Succeeded;
+
+    /// <summary>Abandon après une erreur : le worktree et la branche disparaissent (rien n'a été proposé au dev).</summary>
+    public async Task DiscardAsync()
+    {
+        await ProcessRunner.RunAsync("git", ["worktree", "remove", "--force", Path], RepoRoot, TimeSpan.FromMinutes(1), default);
+        await ProcessRunner.RunAsync("git", ["branch", "-D", Branch], RepoRoot, TimeSpan.FromSeconds(30), default);
     }
 
     /// <summary>Commite tout le travail de l'agent sur la branche de la feature.</summary>

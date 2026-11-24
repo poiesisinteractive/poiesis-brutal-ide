@@ -71,6 +71,35 @@ public class FeatureSessionTests : IDisposable
         Assert.False(Directory.Exists(proposal.Workspace.Path));
     }
 
+    sealed class FailingProvider : IChatProvider
+    {
+        public string Name => "panne";
+        public string Model => "panne";
+        public Task<ChatResponse> CompleteAsync(ChatRequest request, CancellationToken ct = default) =>
+            throw new HttpRequestException("serveur injoignable");
+    }
+
+    [Fact]
+    public async Task A_provider_failure_leaves_no_worktree_nor_branch_and_the_title_can_be_reused()
+    {
+        var failing = new FeatureSession(new FailingProvider(), [new ValidationGate("build", Pass)], new WorkspaceCommands(Pass, Pass, _ => Pass));
+        await Assert.ThrowsAsync<HttpRequestException>(() => failing.RunAsync(_repo, "Même titre", "x", "test"));
+        Assert.False(Directory.Exists(Path.Combine(_repo, ".poiesis", "worktrees", "meme-titre")));
+
+        // Une branche refusée est gardée : la feature suivante du même nom prend un suffixe.
+        var provider = new ScriptedProvider(ScriptedProvider.Reply(StopReason.EndTurn, new TextPart("rien à faire")));
+        var first = await new FeatureSession(provider, [new ValidationGate("build", Pass)], new WorkspaceCommands(Pass, Pass, _ => Pass))
+            .RunAsync(_repo, "Même titre", "x", "test");
+        Assert.Equal("feature/meme-titre", first.Workspace.Branch);
+        await first.Workspace.RejectAsync();
+
+        var again = new ScriptedProvider(ScriptedProvider.Reply(StopReason.EndTurn, new TextPart("rien à faire")));
+        var second = await new FeatureSession(again, [new ValidationGate("build", Pass)], new WorkspaceCommands(Pass, Pass, _ => Pass))
+            .RunAsync(_repo, "Même titre", "x", "test");
+        Assert.Equal("feature/meme-titre-2", second.Workspace.Branch);
+        await second.Workspace.RejectAsync();
+    }
+
     public void Dispose()
     {
         try

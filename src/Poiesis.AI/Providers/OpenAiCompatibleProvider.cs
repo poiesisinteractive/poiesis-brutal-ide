@@ -1,5 +1,4 @@
 using System.Net.Http.Headers;
-using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
@@ -38,7 +37,8 @@ public sealed class OpenAiCompatibleProvider : IChatProvider
     {
         using var message = new HttpRequestMessage(HttpMethod.Post, _endpoint)
         {
-            Content = JsonContent.Create(BuildBody(request)),
+            // Corps avec Content-Length (pas de transfert par morceaux) : certains serveurs locaux ne le gèrent pas.
+            Content = new StringContent(BuildBody(request).ToJsonString(), System.Text.Encoding.UTF8, "application/json"),
         };
         if (_apiKey is not null)
             message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);

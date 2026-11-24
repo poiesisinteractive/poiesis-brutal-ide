@@ -30,6 +30,20 @@ public sealed class FeatureSession(IChatProvider provider, IReadOnlyList<Validat
     public async Task<FeatureProposal> RunAsync(string repoRoot, string featureTitle, string featureDescription, string projectContext, CancellationToken ct = default)
     {
         var workspace = await FeatureWorkspace.CreateAsync(repoRoot, featureTitle, ct);
+        try
+        {
+            return await RunInWorkspaceAsync(workspace, featureTitle, featureDescription, projectContext, ct);
+        }
+        catch
+        {
+            // Erreur du fournisseur, annulation… : rien à relire, on ne laisse ni worktree ni branche derrière soi.
+            await workspace.DiscardAsync();
+            throw;
+        }
+    }
+
+    async Task<FeatureProposal> RunInWorkspaceAsync(FeatureWorkspace workspace, string featureTitle, string featureDescription, string projectContext, CancellationToken ct)
+    {
         var loop = new AgentLoop(provider, new WorkspaceTools(workspace.Path, commands).All());
         loop.Event += e => AgentEvent?.Invoke(e);
 
