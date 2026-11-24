@@ -68,6 +68,20 @@ Poiesis Brutal IDE est un éditeur de jeux à la manière de Godot ou Unity, con
 | Échec de l'agent | **Le worktree et la branche sont supprimés** ; un titre déjà pris reçoit un suffixe | Constaté en test : une erreur du fournisseur laissait une branche orpheline qui bloquait la relance. |
 | Requêtes HTTP | **Corps avec `Content-Length`**, pas de transfert par morceaux | Certains serveurs locaux compatibles OpenAI ne lisent pas les corps envoyés par morceaux. |
 
+## Grill du 2026-11-24 : un vrai éditeur
+
+| Sujet | Décision |
+| --- | --- |
+| Stratégie | **Le jeu tire l'éditeur** : chaque jalon d'Orionum livre les outils d'éditeur dont il a besoin. Pas de jalon « éditeur seul ». |
+| Indispensable | **Les quatre familles** : contenu et réutilisation, édition de scène avancée, débogage en jeu, code et build. Réparties du J2 au J4 (voir ROADMAP). |
+| Outils propres au jeu | **Extensions fournies par le jeu** : le moteur et l'éditeur restent génériques ; le jeu ajoute ses panneaux, inspecteurs et gizmos par une API d'extension rechargée à chaud. L'IA peut les écrire. |
+| Réutilisation | **Scènes imbriquées, à la Godot** : toute scène s'instancie dans une autre, avec des surcharges. Pas de type « prefab » à part. |
+| IA dans l'éditeur | **Trois rôles en plus du workflow feature** : agir sur la scène ouverte, écrire des outils d'éditeur, analyser une partie. |
+| IA sur la scène | **Aperçu puis validation** : fantômes dans le viewport et liste dans le panneau IA, puis une seule commande annulable. Pas de branche git pour ça. |
+| Retour arrière | **Instantanés manuels** (prendre, revenir) au J2. La frise complète vient plus tard. |
+| Éditeur de code | **VS Code** (`code --goto fichier:ligne:colonne`). |
+| Export | **Windows autonome dès le J2**, pour faire tester la bataille sans l'éditeur. |
+
 ## Questions encore ouvertes
 
 1. **Audio** : FMOD (bindings BRUTAL, mais licence FMOD à payer et bibliothèques natives non fournies) ou SDL_mixer (choix du POC, gratuit, plus limité) ?

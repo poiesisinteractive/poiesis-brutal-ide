@@ -45,28 +45,64 @@ Le jalon 1 a été écrit et testé sous Linux, sans GPU. À confirmer sur un po
 - un vrai tour d'IA avec chacun des fournisseurs (Anthropic, OpenAI, Gemini, Ollama ou LM Studio) ;
 - fusion d'une feature quand le dépôt a des modifications locales non commitées (la fusion git refuse alors de toucher les fichiers concernés ; le message doit être clair).
 
-## J2 : Orionum réécrit, première partie
+## Principe des jalons suivants
 
-Critère : *la bataille des capitaux du POC tourne dans l'éditeur, en lignes de bataille lisibles.*
+Le jeu tire l'éditeur (décision du 2026-11-24) : chaque jalon d'Orionum livre aussi les outils d'éditeur dont il a besoin, et rien n'est construit « au cas où ». À la fin du J4, l'éditeur couvre les quatre familles jugées indispensables :
+- contenu et réutilisation ;
+- édition de scène avancée ;
+- débogage en jeu ;
+- code et build.
 
-- Vol newtonien assisté, croisière, boucliers à 6 faces, sous-systèmes, tourelles et lances, dégâts localisés.
-- Index spatial et phases parallèles (`JobScheduler` de BRUTAL) : objectif 500 contre 500 fluide.
-- Rendu de masse : instanciation, icônes tactiques au loin.
+## J2 : Orionum réécrit, première partie, et débogage en jeu
 
-## J3 : modèles procéduraux et assets
+Critère : *la bataille des capitaux du POC tourne dans l'éditeur. On la met en pause sur un tir, on avance image par image, on modifie la coque d'un vaisseau en direct, on revient à un instantané. On exporte le jeu et un joueur le lance sans l'éditeur.*
 
-- Générateur de coques paramétré (proues, superstructures, placement des tourelles), édité comme un nœud avec aperçu 3D.
-- Import glTF (Brutal.Gltf, MeshOptimizer) et textures KTX2 en alternative.
+Jeu :
+- vol newtonien assisté, croisière, boucliers à 6 faces, sous-systèmes, tourelles et lances, dégâts localisés ;
+- index spatial et phases parallèles (`JobScheduler` de BRUTAL), objectif 500 contre 500 fluide ;
+- rendu de masse : instanciation, icônes tactiques au loin.
 
-## J4 : effets, son, UI de jeu
+Éditeur, ce qu'il faut pour mettre au point cette sim :
+- **débogage en jeu** : pause, image par image, édition des composants en direct dans le panneau Entités ;
+- **instantanés manuels** de la partie (prendre, revenir), sur le clone du monde ECS ;
+- **dessin de débogage** fourni par le jeu (portées, cibles, vecteurs) ;
+- **profileur par système** (temps par phase et par image) ;
+- **gizmo de rotation** (orientation des flottes et des coques) ;
+- **code** : erreurs de build cliquables qui ouvrent VS Code à la bonne ligne (`code --goto`), ouverture du projet C#, tests du jeu lancés depuis l'éditeur ;
+- **export Windows autonome** : exécutable hôte, DLL du jeu, contenu, splash et `NOTICE.txt` BRUTAL ;
+- **IA qui analyse une partie** : métriques et journaux d'une partie, ou d'une série en headless ; l'agent explique l'équilibrage, les bugs, les performances.
 
-- Effets : tirs, impacts de bouclier hexagonaux, explosions, HDR et bloom en Vulkan.
-- Audio selon la décision FMOD ou SDL_mixer ; banques de cues éditables.
+## J3 : modèles, contenu et réutilisation
+
+Critère : *on conçoit un croiseur dans un concepteur de coques propre à Orionum, on en fait une flotte type réutilisable, on l'instancie dans deux scénarios avec des surcharges, et on la retrouve dans le navigateur de contenu.*
+
+Jeu :
+- générateur de coques paramétré (proues, superstructures, placement des tourelles) ;
+- import glTF (Brutal.Gltf, MeshOptimizer) et textures KTX2 en alternative.
+
+Éditeur :
+- **API d'extension** : le jeu ajoute ses panneaux, inspecteurs, gizmos et dessins de débogage, rechargés à chaud avec sa DLL. Le concepteur de coques est la première extension d'Orionum ;
+- **scènes imbriquées**, à la Godot : toute scène s'instancie dans une autre, avec des surcharges de propriétés enregistrées dans l'instance ;
+- **navigateur de contenu** : arborescence, vignettes rendues hors écran, création, renommage, déplacement avec mise à jour des références ;
+- **copier-coller** de nœuds, entre scènes comprises ;
+- **IA qui écrit des outils d'éditeur** : une extension générée dans la DLL du jeu, par le workflow feature.
+
+## J4 : effets, son, UI de jeu, et édition de scène avancée
+
+Critère : *on compose la bataille à l'échelle de Wolf 359 (astres, flottes, escadres) en multi-sélection et magnétisme, ou en demandant à l'IA « place trois escadres en tenaille autour des Clans ». On voit l'aperçu, on valide, et la bataille a ses effets, son son et son HUD.*
+
+Jeu :
+- effets : tirs, impacts de bouclier hexagonaux, explosions, HDR et bloom en Vulkan ;
+- audio selon la décision FMOD ou SDL_mixer, avec des banques de cues éditables ;
 - HUD et menus.
+
+Éditeur :
+- **édition de scène avancée** : multi-sélection (rectangle, Ctrl), gizmo d'échelle, magnétisme sur la grille, repère local ou global, alignement et répartition, caméras enregistrées ;
+- **IA qui agit sur la scène ouverte** : elle propose des commandes d'éditeur, affichées en fantôme dans le viewport et en liste dans le panneau IA. On les applique d'un clic, en une seule commande annulable, ou on les refuse.
 
 ## Plus tard
 
 - Migration de l'état ECS au hot reload (sans arrêter la partie).
-- Export d'un build de jeu autonome.
+- Frise temporelle complète (instantanés réguliers et ordres rejoués), dans le prolongement des instantanés manuels du J2.
 - Play en process séparé (Brutal.Monitor) pour tester le build réel.
 - Linux, puis peut-être macOS.
