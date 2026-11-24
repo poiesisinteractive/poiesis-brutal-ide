@@ -30,6 +30,9 @@ sealed class EditorApp : IDisposable
     readonly DataPanel _data;
     readonly ContentPanel _content;
     readonly ExtensionHost _extensions;
+    readonly PreviewView _preview;
+    readonly ThumbnailService _thumbnails;
+    int _frameCount;
     readonly AiPanel _ai;
     readonly DebugPanel _debug;
     readonly AnalysisPanel _analysis;
@@ -39,7 +42,8 @@ sealed class EditorApp : IDisposable
     bool _reloadAfterBuild;
     bool _showAbout;
     float _speed = 1;
-    int _scriptWait = 2;   // le script attend que les fenêtres existent
+    int _scriptWait = 2;
+    bool _waitReview;   // le script attend que les fenêtres existent
 
     readonly Action<string> _requestCapture;
 
@@ -71,6 +75,10 @@ sealed class EditorApp : IDisposable
         _analysis = new AnalysisPanel(_session, _project, _log, _ai);
         _viewport.DebugChannels = _debug.EnabledChannels;
         _extensions = new ExtensionHost(_session, _log, _properties);
+        _preview = new PreviewView(vk, imgui.Renderer);
+        _extensions.PreviewView = _preview;
+        _thumbnails = new ThumbnailService(vk, imgui.Renderer, _session, _extensions, _log, _project.Root);
+        _content.Thumbnails = _thumbnails;
         _viewport.Extensions = _extensions;
         _inspector.Extensions = _extensions.DrawInspectors;
         _splash = new Splash(vk, imgui.Renderer, options.SplashSeconds);
@@ -187,6 +195,15 @@ sealed class EditorApp : IDisposable
             _reloadAfterBuild = false;
         }
 
+        // Une extension a enregistré des données et demandé un rechargement (pas pendant son propre code).
+        if (_extensions.ReloadRequested)
+        {
+            _extensions.ReloadRequested = false;
+            ReloadModule();
+        }
+        _preview.Slot = frame.Slot;
+        _preview.Frame = ++_frameCount;
+        _thumbnails.Process();
         _exporter.TakeCompleted();
         _tests.TakeCompleted();
         RunScript();
@@ -211,7 +228,7 @@ sealed class EditorApp : IDisposable
         _ai.Draw();
         _debug.Draw();
         _analysis.Draw();
-        _extensions.DrawPanels(() => DockLikeIfNew("Analyse"));
+        _extensions.DrawPanels(p => DockLikeIfNew(SiblingOf(p.Placement)));
         if (_showAbout)
             About();
         UnsavedChangesPopup();
@@ -221,6 +238,13 @@ sealed class EditorApp : IDisposable
     /// Un panneau apparu après l'enregistrement de la disposition (nouvelle version, extension du jeu) n'a pas de place :
     /// ImGui l'ouvrirait flottant et minuscule. On l'ancre à côté de <paramref name="sibling"/> la première fois.
     /// </summary>
+    static string SiblingOf(Poiesis.Editor.Api.PanelPlacement placement) => placement switch
+    {
+        Poiesis.Editor.Api.PanelPlacement.Center => "Viewport",
+        Poiesis.Editor.Api.PanelPlacement.Bottom => "Console",
+        _ => "Analyse",
+    };
+
     static void DockLikeIfNew(string sibling)
     {
         var window = ImGui.Internal.FindWindowByName(sibling);
@@ -282,6 +306,7 @@ sealed class EditorApp : IDisposable
         if (_splash.Active)
             return;
         _renderer.Render(frame.Commands, frame.Slot, _viewport.BuildFrame());
+        _preview.Render(frame.Commands);
     }
 
     // ----- Menus et barre d'outils -------------------------------------------------------------------
@@ -502,7 +527,12 @@ sealed class EditorApp : IDisposable
         ImGui.Internal.DockBuilderDockWindow("Débogage"u8, rightBottom);
         ImGui.Internal.DockBuilderDockWindow("Analyse"u8, rightBottom);
         foreach (var panel in _extensions.Panels)
-            ImGui.Internal.DockBuilderDockWindow(panel.Title, rightBottom);
+            ImGui.Internal.DockBuilderDockWindow(panel.Title, panel.Placement switch
+            {
+                Poiesis.Editor.Api.PanelPlacement.Center => center,
+                Poiesis.Editor.Api.PanelPlacement.Bottom => bottom,
+                _ => rightBottom,
+            });
         ImGui.Internal.DockBuilderDockWindow("Console"u8, bottom);
         ImGui.Internal.DockBuilderDockWindow("Entités"u8, bottom);
         ImGui.Internal.DockBuilderDockWindow("Données"u8, bottom);
@@ -531,6 +561,12 @@ sealed class EditorApp : IDisposable
 
     void RunScript()
     {
+        if (_waitReview)
+        {
+            if (_ai.IsRunning)
+                return;
+            _waitReview = false;
+        }
         if (_scriptWait > 0)
         {
             _scriptWait--;
@@ -558,6 +594,15 @@ sealed class EditorApp : IDisposable
                 case "series": _analysis.ScriptStart(int.Parse(arg)); break;
                 case "ask": _analysis.ScriptAsk(arg); break;
                 case "provider": _ai.SelectProvider(arg); break;
+                case "feature":
+                    var feature = arg.Split('|', 2);
+                    _ai.ScriptStart(feature[0], feature.Length > 1 ? feature[1].Replace("\\n", "\n") : feature[0]);
+                    break;
+                case "wait-review":
+                    // Attend que l'agent ait fini (proposition à relire) avant la suite du script.
+                    _waitReview = true;
+                    return;
+                case "accept": _ai.ScriptFinish(accept: true); break;
                 case "open-first-location":
                     if (_log.Snapshot().FirstOrDefault(e => e.Location is not null)?.Location is { } loc)
                         _code.Open(loc);
@@ -565,6 +610,8 @@ sealed class EditorApp : IDisposable
                 case "export": _exporter.Start(arg == "windows" ? ExportTarget.WindowsX64 : ExportTarget.LinuxX64); break;
                 case "wait": _scriptWait = int.Parse(arg); return;
                 case "focus": ImGui.SetWindowFocus(arg); break;
+                case "grid": _content.Grid = arg != "off"; break;
+                case "content-select": _content.Select(arg); break;
                 case "tool":
                     if (!_extensions.RunMenu(arg))
                         _log.Warn("script", $"Commande d'extension inconnue : {arg}");
@@ -613,6 +660,8 @@ sealed class EditorApp : IDisposable
     public void Dispose()
     {
         _splash.Dispose();
+        _thumbnails.Dispose();
+        _preview.Dispose();
         _renderer.Dispose();
         _session.Dispose();
     }

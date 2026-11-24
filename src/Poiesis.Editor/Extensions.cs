@@ -66,6 +66,7 @@ sealed class ExtensionHost : IGizmoContext
     /// <summary>Avant le déchargement : plus aucune référence vers un délégué ou un type du jeu.</summary>
     void Forget()
     {
+        PreviewView?.Forget();
         _registry = null;
         _failed.Clear();
         _names.Clear();
@@ -92,13 +93,31 @@ sealed class ExtensionHost : IGizmoContext
         }
     }
 
+    /// <summary>L'aperçu 3D partagé par les extensions (fourni par l'éditeur).</summary>
+    public PreviewView? PreviewView { get; set; }
+
+    /// <summary>Vrai quand une extension a demandé un rechargement du jeu (fait par l'éditeur à l'image suivante).</summary>
+    public bool ReloadRequested { get; set; }
+
+    public ThumbnailExtension? ThumbnailFor(string fileName) =>
+        _registry?.Thumbnails.FirstOrDefault(t => !_failed.Contains(t) && System.IO.Enumeration.FileSystemName.MatchesSimpleExpression(t.Pattern, fileName));
+
+    public World? BuildThumbnail(string fileName, string path)
+    {
+        if (ThumbnailFor(fileName) is not { } thumbnail)
+            return null;
+        World? world = null;
+        Guard(thumbnail, $"Vignette « {thumbnail.Pattern} »", () => world = thumbnail.Build(path, this));
+        return world;
+    }
+
     // ----- Panneaux, inspecteurs, menus --------------------------------------------------------------
 
-    public void DrawPanels(Action? beforeEach = null)
+    public void DrawPanels(Action<PanelExtension>? beforeEach = null)
     {
         foreach (var panel in Panels)
         {
-            beforeEach?.Invoke();
+            beforeEach?.Invoke(panel);
             if (ImGui.Begin(panel.Title))
             {
                 if (_failed.Contains(panel))
@@ -351,6 +370,60 @@ sealed class ExtensionHost : IGizmoContext
         var p = SceneSerializer.EditableProperties(node.GetType()).FirstOrDefault(x => x.Name == property)
             ?? throw new ArgumentException($"{node.GetType().Name}.{property} n'est pas une propriété éditable");
         _properties.DrawPropertyRow(node, p, _session.InstanceBaseline(node) is { } b && b.GetType() == node.GetType() ? b : null);
+    }
+
+    public bool View3D(string id, World world, float2 size, DrawContext? overlay = null) =>
+        PreviewView?.Draw(id, world, size, overlay) ?? false;
+
+    public void RequestReload() => ReloadRequested = true;
+
+    Dictionary<string, string>? _settings;
+
+    string SettingsPath => Path.Combine(_session.ProjectRoot, ".poiesis", "extensions.json");
+
+    public string? GetSetting(string key)
+    {
+        LoadSettings();
+        return _settings!.GetValueOrDefault(key);
+    }
+
+    public void SetSetting(string key, string? value)
+    {
+        LoadSettings();
+        if (value is null ? !_settings!.Remove(key) : _settings!.TryGetValue(key, out var old) && old == value)
+            return;
+        if (value is not null)
+            _settings![key] = value;
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(SettingsPath)!);
+            var json = new System.Text.Json.Nodes.JsonObject();
+            foreach (var (k, v) in _settings!.OrderBy(kv => kv.Key, StringComparer.Ordinal))
+                json[k] = v;
+            File.WriteAllText(SettingsPath, SceneSerializer.ToJsonString(json) + "\n");
+        }
+        catch (IOException ex)
+        {
+            _log.Warn("extension", $"Réglages non enregistrés : {ex.Message}");
+        }
+    }
+
+    void LoadSettings()
+    {
+        if (_settings is not null)
+            return;
+        _settings = new(StringComparer.Ordinal);
+        try
+        {
+            if (File.Exists(SettingsPath) && System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(SettingsPath)) is System.Text.Json.Nodes.JsonObject obj)
+                foreach (var (k, v) in obj)
+                    if (v is not null)
+                        _settings[k] = v.ToString();
+        }
+        catch (Exception ex) when (ex is IOException or System.Text.Json.JsonException)
+        {
+            _log.Warn("extension", $"Réglages illisibles : {ex.Message}");
+        }
     }
 
     public void Log(string message) => _log.Info("extension", message);

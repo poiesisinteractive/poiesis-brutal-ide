@@ -27,6 +27,10 @@ public enum MeshKind
 public struct Renderable
 {
     public MeshKind Mesh;
+
+    /// <summary>Maillage du jeu (numéro dans la <see cref="MeshLibrary"/> du monde), prioritaire sur <see cref="Mesh"/> ; 0 pour aucun.</summary>
+    public int Asset;
+
     public float3 Size;
     public float4 Color;
 

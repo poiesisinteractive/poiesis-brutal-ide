@@ -89,3 +89,19 @@ public class ToolingTests
         Assert.True(project.IsGameAssemblyStale());
     }
 }
+
+public class EditorApiReferenceTests
+{
+    [Fact]
+    public void The_reference_given_to_the_agent_names_every_public_member_of_the_extension_api()
+    {
+        var types = new[] { typeof(Poiesis.Editor.Api.EditorRegistry), typeof(Poiesis.Editor.Api.IEditorContext), typeof(Poiesis.Editor.Api.IGizmoContext) };
+        var members = types.SelectMany(t => t.GetMembers(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.DeclaredOnly))
+            .Where(m => m is System.Reflection.MethodInfo { IsSpecialName: false } or System.Reflection.PropertyInfo)
+            .Select(m => m.Name)
+            .Where(n => n is not ("Panels" or "Inspectors" or "Gizmos" or "Menus" or "Thumbnails"))   // lus par l'éditeur, pas par le jeu
+            .Distinct();
+        var missing = members.Where(n => !Poiesis.Editor.Api.EditorApiReference.Summary.Contains(n, StringComparison.Ordinal)).ToList();
+        Assert.True(missing.Count == 0, "Absent de EditorApiReference.Summary : " + string.Join(", ", missing));
+    }
+}

@@ -100,6 +100,8 @@ public sealed class FeatureSession(IChatProvider provider, IReadOnlyList<Validat
         - Le gameplay s'écrit en composants (structs) et en systèmes (ISystem) dans l'assembly du jeu ; le contenu éditable
           (scénarios, définitions de vaisseaux et d'armes) vit dans des fichiers JSON sous content/.
         - Ne modifie pas le moteur (src/Poiesis.*) : si la fonctionnalité en a besoin, dis-le dans ton message final.
+        - Un outil d'éditeur (panneau, inspecteur, gizmo, commande, vignette) s'écrit comme une extension de l'éditeur dans
+          la DLL du jeu (voir « Outils d'éditeur » plus bas) : il est rechargé à chaud, sans toucher à l'éditeur.
         - Ajoute ou adapte des tests pour ce que tu changes. Lance build puis test avant de terminer, et corrige ce qui échoue.
         - Si la fonctionnalité touche l'équilibrage ou les performances, lance run_headless et rapporte les métriques.
         - Termine par un résumé court : ce qui a changé, comment le vérifier dans l'éditeur, et ce qui reste ouvert.

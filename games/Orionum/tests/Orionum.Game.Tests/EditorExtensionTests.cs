@@ -23,11 +23,65 @@ public class EditorExtensionTests
         foreach (var t in types)
             ((IEditorExtension)Activator.CreateInstance(t)!).Register(editor);
 
-        Assert.Single(types);
-        Assert.Equal(["Ordre de bataille"], editor.Panels.Select(p => p.Title));
+        Assert.Equal(["HullDesigner", "OrionumEditor"], types.Select(t => t.Name).Order());
+        Assert.Equal(["Concepteur de coques", "Ordre de bataille"], editor.Panels.Select(p => p.Title).Order());
+        Assert.Equal(PanelPlacement.Center, editor.Panels.Single(p => p.Title == "Concepteur de coques").Placement);
         Assert.Equal(["FleetNode"], editor.Inspectors.Select(i => i.NodeType.Name));
         Assert.Equal(["BodyNode", "FleetNode"], editor.Gizmos.Select(g => g.NodeType.Name));
-        Assert.Equal(["Orionum/Aligner les flottes face à face"], editor.Menus.Select(m => m.Path));
+        Assert.Contains("Orionum/Aligner les flottes face à face", editor.Menus.Select(m => m.Path));
+        Assert.Contains("Orionum/Poser les tourelles sur la coque", editor.Menus.Select(m => m.Path));
+        Assert.Equal(["*.ship.json"], editor.Thumbnails.Select(t => t.Pattern));
+    }
+
+    [Fact]
+    public void Every_bow_style_builds_a_closed_textured_hull_of_the_class_length()
+    {
+        foreach (var bow in Enum.GetValues<BowStyle>())
+        {
+            var design = HullDesigner.DefaultDesign(Role.Cruiser) with { Bow = bow };
+            var hull = HullGenerator.Build(design, 600);
+            var (min, max) = hull.Mesh.Bounds();
+            Assert.Equal(300, max.Z, 1f);                        // la proue au bout
+            Assert.InRange(min.Z, -340, -300);                   // la poupe, plus les tuyères
+            Assert.Equal(hull.Mesh.Positions.Count, hull.Mesh.TexCoords.Count);
+            Assert.All(hull.Mesh.Normals, n => Assert.InRange(n.Length(), 0.99f, 1.01f));
+            Assert.InRange(hull.Profile.HalfWidth(0), 50, 60.5f);   // largeur 0,2 × 600 / 2, moins le pincement
+        }
+    }
+
+    [Fact]
+    public void Snapping_puts_broadsides_on_the_flanks_and_turrets_on_the_deck()
+    {
+        var hull = HullGenerator.Build(new HullDesign { Beam = 0.2f, Height = 0.1f, Sections = 1, Waist = 0 }, 600);
+        var weapons = new List<WeaponDef>
+        {
+            new() { Name = "bâbord", Mount = Mount.Port, Hardpoints = [new HardpointSpec { Row = [4, 100, 20, -150, 150] }] },
+            new() { Name = "tribord", Mount = Mount.Starboard, Hardpoints = [new HardpointSpec { Row = [4, -100, 20, -150, 150] }] },
+            new() { Name = "pont", Mount = Mount.Turret, Hardpoints = [new HardpointSpec { Point = new float3(0, 80, 100) }] },
+        };
+
+        var snapped = HullGenerator.SnapHardpoints(weapons, hull.Profile);
+
+        Assert.Equal(60, snapped[0].Hardpoints[0].Row![1], 0.5f);
+        Assert.Equal(-60, snapped[1].Hardpoints[0].Row![1], 0.5f);
+        Assert.Equal(30, snapped[2].Hardpoints[0].Point!.Value.Y, 0.5f);
+        Assert.Equal(weapons[0].Hardpoints[0].Row![0], snapped[0].Hardpoints[0].Row![0]);   // le nombre de tourelles ne change pas
+    }
+
+    [Fact]
+    public void Ship_classes_get_their_generated_hull_or_imported_model()
+    {
+        var catalog = Catalog.Load(GameModuleTests.ContentRoot);
+        var cruiser = catalog.Classes[catalog.IndexOf("coalition.cruiser")];
+        var frigate = catalog.Classes[catalog.IndexOf("clans.frigate")];
+        var battleship = catalog.Classes[catalog.IndexOf("coalition.battleship")];
+
+        Assert.StartsWith("hull:", catalog.Meshes.Get(cruiser.MeshAsset)!.Key);
+        var model = catalog.Meshes.Get(frigate.MeshAsset)!;
+        Assert.Equal("model:models/clans.frigate.glb", model.Key);
+        Assert.NotNull(model.Texture);                            // la texture KTX2 du modèle, transcodée
+        Assert.Equal(frigate.Def.LengthMeters, frigate.RenderSize.Z, frigate.Def.LengthMeters * 0.15f);
+        Assert.Equal(0, battleship.MeshAsset);                    // forme de base
     }
 
     [Fact]
@@ -77,6 +131,17 @@ public class EditorExtensionTests
         public void Remove(Node node) => node.Parent!.RemoveChild(node);
         public void Group(string label, Action edits) => edits();
         public void PropertyField(Node node, string property) { }
+        public bool View3D(string id, World world, Brutal.Numerics.float2 size, Poiesis.Engine.Debug.DrawContext? overlay = null) => false;
+        public void RequestReload() { }
+        readonly Dictionary<string, string> _settings = new();
+        public string? GetSetting(string key) => _settings.GetValueOrDefault(key);
+        public void SetSetting(string key, string? value)
+        {
+            if (value is null)
+                _settings.Remove(key);
+            else
+                _settings[key] = value;
+        }
         public void Log(string message) { }
         public void Warn(string message) { }
     }

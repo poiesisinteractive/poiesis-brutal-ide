@@ -20,6 +20,10 @@
     <PackageVersion Include="Ahwoo.Brutal.ImGui.FreeType" Version="2026.10.3" />
     <PackageVersion Include="Ahwoo.Brutal.NativeFileDialog" Version="2026.10.3" />
     <PackageVersion Include="Ahwoo.Brutal.Stb" Version="2026.10.3" />
+    <!-- Import de modèles (J3b) : glTF, optimisation des maillages, textures PNG, JPEG et KTX2 (Basis transcodé). -->
+    <PackageVersion Include="Ahwoo.Brutal.Gltf" Version="2026.10.3" />
+    <PackageVersion Include="Ahwoo.Brutal.MeshOptimizer" Version="2026.10.2" />
+    <PackageVersion Include="Ahwoo.Brutal.Texture" Version="2026.10.3" />
   </ItemGroup>
 
   <!-- IA. -->

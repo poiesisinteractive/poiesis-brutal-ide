@@ -21,9 +21,18 @@ public sealed class WorldView
     public const float Fov = 0.9f;
 
     readonly Dictionary<MeshKind, MeshHandle> _meshes = new();
+    readonly SceneRenderer _renderer;
+
+    /// <summary>Maillages du jeu téléversés, par objet (un maillage régénéré est un nouvel objet), avec leur dernière image d'usage.</summary>
+    readonly Dictionary<MeshAsset, (MeshHandle Handle, long LastUsed)> _assets = new(ReferenceEqualityComparer.Instance);
+    long _frameNumber;
+
+    /// <summary>Un maillage du jeu inutilisé pendant ce nombre d'images est libéré (concepteur de coques, rechargement).</summary>
+    public const int AssetIdleFrames = 120;
 
     public WorldView(SceneRenderer renderer)
     {
+        _renderer = renderer;
         void Upload(MeshKind kind, MeshData mesh) =>
             _meshes[kind] = renderer.UploadMesh(mesh.Positions.ToArray(), mesh.Normals.ToArray(), mesh.Indices.ToArray());
         Upload(MeshKind.Box, Meshes.Box());
@@ -60,6 +69,8 @@ public sealed class WorldView
     /// <summary>Commence une image : vide les listes, place la caméra.</summary>
     public void Begin()
     {
+        _frameNumber++;
+        ReleaseIdleAssets();
         Frame.Clear();
         Draw.Clear();
         Frame.Camera = new Camera
@@ -79,6 +90,7 @@ public sealed class WorldView
         var eye = EyePosition();
         var transforms = world.Store<Transform>();
         var renderables = world.Store<Renderable>();
+        world.TryResource<MeshLibrary>(out var library);
         var entities = renderables.DenseEntities;
         var items = renderables.Components;
         for (int i = 0; i < entities.Length; i++)
@@ -98,7 +110,41 @@ public sealed class WorldView
                 size *= MinApparentPixels / MathF.Max(apparent, 0.01f);
 
             var m = float4x4.CreateScale(size) * float4x4.CreateFromQuaternion(t.Rotation) * float4x4.CreateTranslation(t.Position);
-            Frame.Draw(_meshes[r.Mesh], new MeshInstance { World = m, Color = color });
+            var handle = r.Asset != 0 && library?.Get(r.Asset) is { } asset ? MeshOf(asset) : _meshes[r.Mesh];
+            Frame.Draw(handle, new MeshInstance { World = m, Color = color });
+        }
+    }
+
+    /// <summary>Le handle GPU d'un maillage du jeu, téléversé à la première utilisation.</summary>
+    public MeshHandle MeshOf(MeshAsset asset)
+    {
+        if (_assets.TryGetValue(asset, out var entry))
+        {
+            _assets[asset] = (entry.Handle, _frameNumber);
+            return entry.Handle;
+        }
+        var mesh = asset.Mesh;
+        var handle = _renderer.UploadMesh(mesh.Positions.ToArray(), mesh.Normals.ToArray(), mesh.TexCoords.ToArray(), mesh.Indices.ToArray(),
+            asset.Texture is { } tex ? (new int2(tex.Width, tex.Height), tex.Rgba) : null);
+        _assets[asset] = (handle, _frameNumber);
+        return handle;
+    }
+
+    /// <summary>Nombre de maillages du jeu présents sur le GPU pour cette vue.</summary>
+    public int AssetCount => _assets.Count;
+
+    void ReleaseIdleAssets()
+    {
+        List<MeshAsset>? idle = null;
+        foreach (var (asset, entry) in _assets)
+            if (_frameNumber - entry.LastUsed > AssetIdleFrames)
+                (idle ??= new()).Add(asset);
+        if (idle is null)
+            return;
+        foreach (var asset in idle)
+        {
+            _renderer.ReleaseMesh(_assets[asset].Handle);
+            _assets.Remove(asset);
         }
     }
 
@@ -175,20 +221,27 @@ public sealed class WorldView
     public void Zoom(float wheel) => Distance = Math.Clamp(Distance * MathF.Pow(0.85f, wheel), 20f, 5_000_000f);
 
     /// <summary>Cadre toutes les entités ; avec <paramref name="maxRadius"/>, ignore les plus grosses (astres de décor).</summary>
-    public void FrameAll(World world, float maxRadius = float.MaxValue)
+    public void FrameAll(World world, float maxRadius = float.MaxValue, float minRadius = 2000f)
     {
         var points = new List<float3>();
         var transforms = world.Store<Transform>();
         var renderables = world.Store<Renderable>();
         var dense = transforms.DenseEntities;
         for (int i = 0; i < dense.Length; i++)
-            if (!renderables.Has(dense[i]) || renderables.Get(dense[i]).BoundingRadius <= maxRadius)
-                points.Add(transforms.Components[i].Position);
+        {
+            float r = renderables.Has(dense[i]) ? renderables.Get(dense[i]).BoundingRadius : 0;
+            if (r > maxRadius)
+                continue;
+            // Le centre et l'étendue : un vaisseau seul se cadre en entier.
+            var p = transforms.Components[i].Position;
+            points.Add(p - new float3(r));
+            points.Add(p + new float3(r));
+        }
         if (points.Count > 0)
-            FramePoints(points);
+            FramePoints(points, minRadius);
     }
 
-    public void FramePoints(IReadOnlyList<float3> points)
+    public void FramePoints(IReadOnlyList<float3> points, float minRadius = 2000f)
     {
         var min = points[0];
         var max = points[0];
@@ -198,7 +251,7 @@ public sealed class WorldView
             max = float3.Max(max, p);
         }
         Target = (min + max) * 0.5f;
-        float radius = MathF.Max(float3.Distance(min, max) * 0.5f, 2000f);
+        float radius = MathF.Max(float3.Distance(min, max) * 0.5f, minRadius);
         Distance = radius / MathF.Tan(Fov / 2) * 1.1f;
     }
 

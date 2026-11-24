@@ -32,14 +32,20 @@ public sealed class EditorRegistry
     readonly List<InspectorExtension> _inspectors = new();
     readonly List<GizmoExtension> _gizmos = new();
     readonly List<MenuExtension> _menus = new();
+    readonly List<ThumbnailExtension> _thumbnails = new();
 
     public IReadOnlyList<PanelExtension> Panels => _panels;
     public IReadOnlyList<InspectorExtension> Inspectors => _inspectors;
     public IReadOnlyList<GizmoExtension> Gizmos => _gizmos;
     public IReadOnlyList<MenuExtension> Menus => _menus;
+    public IReadOnlyList<ThumbnailExtension> Thumbnails => _thumbnails;
 
-    /// <summary>Un panneau ancrable. <paramref name="draw"/> dessine son contenu, entre <c>Begin</c> et <c>End</c>.</summary>
-    public void Panel(string title, Action<IEditorContext> draw) => _panels.Add(new PanelExtension(title, draw));
+    /// <summary>
+    /// Un panneau ancrable. <paramref name="draw"/> dessine son contenu, entre <c>Begin</c> et <c>End</c>.
+    /// <paramref name="placement"/> dit où il s'ancre la première fois (l'utilisateur peut le déplacer ensuite).
+    /// </summary>
+    public void Panel(string title, Action<IEditorContext> draw, PanelPlacement placement = PanelPlacement.Side) =>
+        _panels.Add(new PanelExtension(title, draw, placement));
 
     /// <summary>Une section de l'inspecteur, sous les propriétés des nœuds de type <typeparamref name="TNode"/>.</summary>
     public void Inspector<TNode>(string title, Action<TNode, IEditorContext> draw) where TNode : Node =>
@@ -54,9 +60,29 @@ public sealed class EditorRegistry
 
     /// <summary>Une commande du menu Outils. Le chemin est découpé par « / » en sous-menus (ex. « Orionum/Aligner les flottes »).</summary>
     public void MenuItem(string path, Action<IEditorContext> run) => _menus.Add(new MenuExtension(path, run));
+
+    /// <summary>
+    /// La vignette des fichiers de contenu dont le nom correspond à <paramref name="pattern"/> (ex. « *.ship.json ») :
+    /// <paramref name="build"/> rend un monde à photographier (entités dessinables, maillages dans sa
+    /// <see cref="Poiesis.Engine.MeshLibrary"/>), ou <c>null</c>. Le chemin reçu est absolu.
+    /// </summary>
+    public void Thumbnail(string pattern, Func<string, IEditorContext, World?> build) => _thumbnails.Add(new ThumbnailExtension(pattern, build));
 }
 
-public sealed record PanelExtension(string Title, Action<IEditorContext> Draw);
+public sealed record ThumbnailExtension(string Pattern, Func<string, IEditorContext, World?> Build);
+
+/// <summary>Où un panneau d'extension s'ancre d'abord.</summary>
+public enum PanelPlacement
+{
+    /// <summary>À droite, avec IA, Débogage et Analyse : outils d'appoint.</summary>
+    Side,
+    /// <summary>Au centre, en onglet à côté du viewport : outils qui demandent de la place (concepteurs).</summary>
+    Center,
+    /// <summary>En bas, avec la console : listes, journaux.</summary>
+    Bottom,
+}
+
+public sealed record PanelExtension(string Title, Action<IEditorContext> Draw, PanelPlacement Placement = PanelPlacement.Side);
 
 public sealed record InspectorExtension(Type NodeType, string Title, Action<Node, IEditorContext> Draw);
 
@@ -99,6 +125,27 @@ public interface IEditorContext
 
     /// <summary>Le widget standard de l'inspecteur pour une propriété (avec surcharge d'instance et annulation).</summary>
     void PropertyField(Node node, string property);
+
+    /// <summary>
+    /// Un aperçu 3D de <paramref name="world"/> dans le panneau, à la taille donnée (pixels) : on le tourne en glissant,
+    /// on zoome à la molette, double-clic pour recadrer. <paramref name="overlay"/> ajoute des traits et étiquettes.
+    /// Un seul aperçu par image ; l'identifiant sert à recadrer quand on change de sujet. Rend vrai s'il est survolé.
+    /// </summary>
+    bool View3D(string id, World world, float2 size, DrawContext? overlay = null);
+
+    /// <summary>
+    /// Demande à l'éditeur de recharger le jeu à l'image suivante (après avoir enregistré des données qu'il lit au
+    /// chargement). Jamais immédiatement : le code de l'extension est encore en cours d'exécution.
+    /// </summary>
+    void RequestReload();
+
+    /// <summary>
+    /// Réglages d'extension (texte), gardés d'un rechargement du jeu à l'autre et d'une session à l'autre
+    /// (<c>.poiesis/extensions.json</c>) : fichier ouvert dans un outil, onglet choisi…
+    /// </summary>
+    string? GetSetting(string key);
+
+    void SetSetting(string key, string? value);
 
     void Log(string message);
 

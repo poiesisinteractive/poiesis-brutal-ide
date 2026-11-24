@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Import des modèles et des textures : glTF (Brutal.Gltf), optimisation pour le GPU (meshoptimizer),
+       textures PNG, JPEG et KTX2 (Brutal.Texture, libktx). Partagé avec les jeux, comme le reste du moteur. -->
+  <PropertyGroup>
+    <RootNamespace>Poiesis.Engine.Assets</RootNamespace>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Poiesis.Engine.Core\Poiesis.Engine.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Ahwoo.Brutal.Gltf" />
+    <PackageReference Include="Ahwoo.Brutal.MeshOptimizer" />
+    <PackageReference Include="Ahwoo.Brutal.Texture" />
+  </ItemGroup>
+
+</Project>

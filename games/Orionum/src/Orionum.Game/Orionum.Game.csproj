@@ -12,6 +12,11 @@
       <Private>false</Private>
       <ExcludeAssets>runtime;native</ExcludeAssets>
     </ProjectReference>
+    <!-- Import de modèles glTF (coques importées) et export (concepteur de coques). -->
+    <ProjectReference Include="..\..\..\..\src\Poiesis.Engine.Assets\Poiesis.Engine.Assets.csproj">
+      <Private>false</Private>
+      <ExcludeAssets>runtime;native</ExcludeAssets>
+    </ProjectReference>
     <!-- Les outils d'éditeur propres à Orionum (panneaux, inspecteurs, gizmos), rechargés avec le jeu. -->
     <ProjectReference Include="..\..\..\..\src\Poiesis.Editor.Api\Poiesis.Editor.Api.csproj">
       <Private>false</Private>

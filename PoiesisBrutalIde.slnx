@@ -12,6 +12,7 @@
     <Project Path="src/Poiesis.Editor.Api/Poiesis.Editor.Api.csproj" />
     <Project Path="src/Poiesis.Editor.Core/Poiesis.Editor.Core.csproj" />
     <Project Path="src/Poiesis.Editor/Poiesis.Editor.csproj" />
+    <Project Path="src/Poiesis.Engine.Assets/Poiesis.Engine.Assets.csproj" />
     <Project Path="src/Poiesis.Engine.Core/Poiesis.Engine.Core.csproj" />
     <Project Path="src/Poiesis.Engine.Hosting/Poiesis.Engine.Hosting.csproj" />
     <Project Path="src/Poiesis.Engine.Scene/Poiesis.Engine.Scene.csproj" />

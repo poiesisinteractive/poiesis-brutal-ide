@@ -16,6 +16,7 @@ public sealed class OrionumModule : IGameModule, IWorldVisualizer, IGameReporter
     public void InitializeWorld(World world)
     {
         world.SetResource(_catalog);
+        world.SetResource(_catalog.Meshes);
         world.SetResource(new Battle());
     }
 

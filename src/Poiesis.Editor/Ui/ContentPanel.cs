@@ -28,7 +28,13 @@ sealed class ContentPanel(ContentLibrary library, EditorSession session, LogBuff
 
     public void Refresh() => _tree = null;
 
+    /// <summary>Les vignettes (fournies par l'éditeur).</summary>
+    public ThumbnailService? Thumbnails { get; set; }
+
     public string? Selected => _selected;
+
+    /// <summary>Sélectionne un fichier, ou un dossier (terminé par « / »), par son chemin dans <c>content/</c>.</summary>
+    public void Select(string? path) => _selected = path;
 
     public void Draw()
     {
@@ -49,18 +55,33 @@ sealed class ContentPanel(ContentLibrary library, EditorSession session, LogBuff
                 StartCreate(folder, scene: true);
             ImGui.EndDisabled();
             ImGui.SameLine();
+            if (ImGui.SmallButton(Grid ? "Arbre" : "Vignettes"))
+                Grid = !Grid;
+            ImGui.SameLine();
             ImGui.TextDisabled(folder.Length == 0 ? "dans content/" : $"dans {folder}/");
             ImGui.Separator();
 
-            if (ImGui.BeginChild("tree"u8))
+            // Sous l'arbre, l'aperçu du fichier sélectionné.
+            var preview = _selected is not null && !Grid ? Thumbnails?.Get(_selected) : null;
+            float previewHeight = preview is null ? 0 : 150;
+            if (ImGui.BeginChild("tree"u8, new float2(0, -previewHeight)))
             {
-                foreach (var child in _tree.Children)
-                    DrawEntry(child);
-                // Déposer sur le fond : à la racine de content/.
+                if (Grid)
+                    DrawGrid(folder);
+                else
+                    foreach (var child in _tree.Children)
+                        DrawEntry(child);
+                // Déposer sur le fond : à la racine de content/ (ou dans le dossier affiché, en vignettes).
                 ImGui.Dummy(new float2(ImGui.GetContentRegionAvail().X, MathF.Max(ImGui.GetContentRegionAvail().Y, 20)));
-                DropTarget("");
+                DropTarget(Grid ? folder : "");
             }
             ImGui.EndChild();
+            if (preview is { } image)
+            {
+                ImGui.Image(image, new float2(140, 140));
+                ImGui.SameLine();
+                ImGui.TextDisabled(Path.GetFileName(_selected!));
+            }
             Popups();
         }
         ImGui.End();
@@ -76,6 +97,8 @@ sealed class ContentPanel(ContentLibrary library, EditorSession session, LogBuff
     {
         if (_selected is null)
             return "";
+        if (_selected.EndsWith('/'))
+            return _selected.TrimEnd('/');
         return Directory.Exists(library.Abs(_selected)) ? _selected : Path.GetDirectoryName(_selected)?.Replace('\\', '/') ?? "";
     }
 
@@ -103,12 +126,7 @@ sealed class ContentPanel(ContentLibrary library, EditorSession session, LogBuff
         if (ImGui.IsItemHovered() && ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left))
             Open(entry);
         if (ImGui.IsItemHovered())
-            ImGui.SetItemTooltip(entry.Kind switch
-            {
-                ContentKind.Scene => $"{entry.Path}\nDouble-clic : ouvrir. Glisser dans l'arbre de la scène : instancier.",
-                ContentKind.Data => $"{entry.Path}\nDouble-clic : éditer dans le panneau Données.",
-                _ => entry.Path,
-            });
+            Tooltip(entry);
 
         ScenePanel.ContentDragSource(entry.Path);
         if (entry.Kind == ContentKind.Folder)
@@ -121,6 +139,108 @@ sealed class ContentPanel(ContentLibrary library, EditorSession session, LogBuff
                 DrawEntry(child);
             ImGui.TreePop();
         }
+    }
+
+    /// <summary>Vue en vignettes : le contenu d'un dossier en tuiles, double-clic pour ouvrir ou entrer.</summary>
+    public bool Grid { get; set; }
+
+    const float Tile = 96;
+
+    void DrawGrid(string folder)
+    {
+        var entry = Find(_tree!, folder) ?? _tree!;
+        int columns = Math.Max(1, (int)((ImGui.GetContentRegionAvail().X + 8) / (Tile + 8)));
+        var items = new List<ContentEntry>();
+        if (entry.Path.Length > 0)
+            items.Add(new ContentEntry(Path.GetDirectoryName(entry.Path)?.Replace('\\', '/') ?? "", "..", ContentKind.Folder, []));
+        items.AddRange(entry.Children);
+        if (ImGui.BeginTable("grid"u8, columns))
+        {
+            foreach (var item in items)
+            {
+                ImGui.TableNextColumn();
+                ImGui.PushID(item.Path + item.Name);
+                DrawTile(item);
+                ImGui.PopID();
+            }
+            ImGui.EndTable();
+        }
+    }
+
+    void DrawTile(ContentEntry entry)
+    {
+        var dl = ImGui.GetWindowDrawList();
+        var min = ImGui.GetCursorScreenPos();
+        var size = new float2(Tile, Tile);
+        bool selected = entry.Path == _selected && entry.Name != "..";
+        ImGui.InvisibleButton("tile"u8, size + new float2(0, ImGui.GetTextLineHeight() + 4));
+        bool hovered = ImGui.IsItemHovered();
+        if (ImGui.IsItemClicked())
+            _selected = entry.Path;
+        if (hovered && ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left))
+        {
+            if (entry.Kind == ContentKind.Folder)
+                _selected = entry.Path.Length == 0 ? null : entry.Path + "/";
+            else
+                Open(entry);
+        }
+        if (entry.Name != "..")
+        {
+            ScenePanel.ContentDragSource(entry.Path);
+            if (hovered)
+                Tooltip(entry);
+            ContextMenu(entry);
+        }
+        if (entry.Kind == ContentKind.Folder)
+            DropTarget(entry.Path);
+
+        var background = selected ? EditorTheme.Accent * new float4(1, 1, 1, 0.35f) : hovered ? new float4(1, 1, 1, 0.08f) : new float4(1, 1, 1, 0.03f);
+        dl.AddRectFilled(min, min + size, EditorTheme.Col(background), 4);
+        if (entry.Kind != ContentKind.Folder && Thumbnails?.Get(entry.Path) is { } thumb)
+            dl.AddImage(thumb, min + new float2(4), min + size - new float2(4));
+        else
+        {
+            var (label, color) = entry.Kind switch
+            {
+                ContentKind.Folder => (entry.Name == ".." ? ".." : "dossier", new float4(0.95f, 0.82f, 0.45f, 1)),
+                ContentKind.Scene => ("scène", EditorTheme.Accent),
+                ContentKind.Data => ("données", new float4(0.85f, 0.85f, 0.88f, 1)),
+                _ => (Path.GetExtension(entry.Name).TrimStart('.'), EditorTheme.Muted),
+            };
+            var textSize = ImGui.CalcTextSize(label);
+            dl.AddText(min + (size - textSize) * 0.5f, EditorTheme.Col(color), label);
+        }
+        var name = entry.Name.Length > 14 ? entry.Name[..13] + "…" : entry.Name;
+        dl.AddText(min + new float2(2, Tile + 2), EditorTheme.Col(new float4(0.85f, 0.85f, 0.88f, 1)), name);
+    }
+
+    static ContentEntry? Find(ContentEntry root, string path)
+    {
+        path = path.TrimEnd('/');
+        if (root.Path == path)
+            return root;
+        foreach (var child in root.Children)
+            if (child.Kind == ContentKind.Folder && (path == child.Path || path.StartsWith(child.Path + "/", StringComparison.Ordinal)))
+                return Find(child, path);
+        return null;
+    }
+
+    /// <summary>La bulle d'un fichier : sa vignette s'il en a une, et ce qu'on peut en faire.</summary>
+    void Tooltip(ContentEntry entry)
+    {
+        if (!ImGui.BeginTooltip())
+            return;
+        if (entry.Kind != ContentKind.Folder && Thumbnails?.Get(entry.Path) is { } thumb)
+            ImGui.Image(thumb, new float2(ThumbnailService.Size, ThumbnailService.Size));
+        ImGui.Text(entry.Path);
+        ImGui.TextDisabled(entry.Kind switch
+        {
+            ContentKind.Scene => "Double-clic : ouvrir. Glisser dans l'arbre de la scène : instancier.",
+            ContentKind.Data => "Double-clic : éditer dans le panneau Données.",
+            ContentKind.Folder => "Glisser un fichier dessus pour l'y déplacer.",
+            _ => "",
+        });
+        ImGui.EndTooltip();
     }
 
     void DropTarget(string folder)

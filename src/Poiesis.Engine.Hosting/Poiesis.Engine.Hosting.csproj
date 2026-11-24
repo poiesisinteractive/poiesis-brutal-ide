@@ -10,6 +10,8 @@
     <ProjectReference Include="..\Poiesis.Engine.Scene\Poiesis.Engine.Scene.csproj" />
     <!-- Les jeux référencent l'API d'extension de l'éditeur : tout hôte doit pouvoir charger ses types (éditeur, headless, joueur). -->
     <ProjectReference Include="..\Poiesis.Editor.Api\Poiesis.Editor.Api.csproj" />
+    <!-- Import des modèles et textures : les jeux s'en servent au chargement de leurs données. -->
+    <ProjectReference Include="..\Poiesis.Engine.Assets\Poiesis.Engine.Assets.csproj" />
   </ItemGroup>
 
 </Project>

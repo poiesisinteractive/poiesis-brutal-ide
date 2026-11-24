@@ -12,16 +12,20 @@ static class Shaders
         layout(push_constant) uniform Push { mat4 viewProj; vec4 lightDir; } pc;
         layout(location = 0) in vec3 position;
         layout(location = 1) in vec3 normal;
-        layout(location = 2) in mat4 world;     // emplacements 2 à 5
-        layout(location = 6) in vec4 color;
+        layout(location = 2) in vec2 texCoord;
+        layout(location = 3) in mat4 world;     // emplacements 3 à 6
+        layout(location = 7) in vec4 color;
         layout(location = 0) out vec3 vNormal;
         layout(location = 1) out vec4 vColor;
+        layout(location = 2) out vec2 vTexCoord;
         void main()
         {
             vec4 wp = world * vec4(position, 1.0);
             gl_Position = pc.viewProj * wp;
-            vNormal = normalize(mat3(world) * normal);
+            // Échelle non uniforme (taille par axe) : les normales suivent l'inverse transposée.
+            vNormal = normalize(transpose(inverse(mat3(world))) * normal);
             vColor = color;
+            vTexCoord = texCoord;
         }
         """u8;
 
@@ -30,14 +34,17 @@ static class Shaders
         layout(push_constant) uniform Push { mat4 viewProj; vec4 lightDir; } pc;
         layout(location = 0) in vec3 vNormal;
         layout(location = 1) in vec4 vColor;
+        layout(location = 2) in vec2 vTexCoord;
+        layout(set = 0, binding = 0) uniform sampler2D baseColor;
         layout(location = 0) out vec4 outColor;
         void main()
         {
+            vec4 albedo = vColor * texture(baseColor, vTexCoord);
             vec3 n = normalize(vNormal);
             float diffuse = max(dot(n, pc.lightDir.xyz), 0.0);
             float fill = max(dot(n, -pc.lightDir.xyz), 0.0) * 0.25;   // contre-jour discret
-            vec3 lit = vColor.rgb * (0.18 + 0.82 * diffuse + fill);
-            outColor = vec4(lit, vColor.a);
+            vec3 lit = albedo.rgb * (0.18 + 0.82 * diffuse + fill);
+            outColor = vec4(lit, albedo.a);
         }
         """u8;
 

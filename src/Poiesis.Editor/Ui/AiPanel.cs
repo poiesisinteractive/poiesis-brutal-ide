@@ -87,6 +87,14 @@ sealed class AiPanel(EditorSession session, ProjectConfig project, LogBuffer log
             ImGui.TextDisabled($"Serveur local : {current.BaseUrl ?? "?"}");
 
         ImGui.Spacing();
+        if (ImGui.SmallButton("Modèle : outil d'éditeur"u8))
+        {
+            if (_title.Trim().Length == 0)
+                _title = "Outil d'éditeur : ";
+            _description.SetValue(EditorToolTemplate);
+        }
+        if (ImGui.IsItemHovered())
+            ImGui.SetItemTooltip("Un panneau, un inspecteur, un gizmo ou une commande propre au jeu, écrit par l'IA comme extension de l'éditeur."u8);
         Widgets.TextField("Titre", "ai-title", ref _title);
         ImGui.TextDisabled("Décrivez la fonctionnalité, pas le code :"u8);
         ImGui.InputTextMultiline("##description"u8, _description, new float2(-1, ImGui.GetTextLineHeight() * 8));
@@ -290,6 +298,29 @@ sealed class AiPanel(EditorSession session, ProjectConfig project, LogBuffer log
         }
     }
 
+    /// <summary>Scripts de vérification : lance une feature avec le fournisseur choisi.</summary>
+    public void ScriptStart(string title, string description)
+    {
+        if (_state != State.Idle || project.FindGitRoot() is not { } git)
+            return;
+        _title = title;
+        _description.SetValue(description);
+        Start(ProviderSettings.Defaults[_provider], git);
+    }
+
+    /// <summary>Scripts : accepte (ou refuse) la proposition en cours, si elle est prête à relire.</summary>
+    public bool ScriptFinish(bool accept)
+    {
+        if (_state != State.Review)
+            return false;
+        Finish(accept);
+        return true;
+    }
+
+    public bool IsReviewing => _state == State.Review;
+
+    public bool IsRunning => _state == State.Running;
+
     void Finish(bool accept)
     {
         var p = _proposal!;
@@ -330,6 +361,31 @@ sealed class AiPanel(EditorSession session, ProjectConfig project, LogBuffer log
             Les systèmes de la sim tournent à 20 Hz ; ils doivent rester déterministes (pas d'aléa non semé, effets croisés appliqués dans un ordre fixe).
             Types de nœuds enregistrés : {nodes}.
             Le moteur (src/Poiesis.*) fournit World, ISystem, Schedule, Node, IGameModule, Transform et Renderable.
+
+            {Poiesis.Editor.Api.EditorApiReference.Summary}
+            Extensions existantes (à lire comme exemples) : {ExistingExtensions(gitRoot)}.
             """;
     }
+
+    /// <summary>Les fichiers du jeu qui déclarent une extension d'éditeur, relatifs au dépôt.</summary>
+    string ExistingExtensions(string gitRoot)
+    {
+        var dir = Path.GetDirectoryName(project.Abs(project.GameProject))!;
+        var files = Directory.EnumerateFiles(dir, "*.cs", SearchOption.AllDirectories)
+            .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}") && File.ReadAllText(f).Contains("IEditorExtension", StringComparison.Ordinal))
+            .Select(f => Path.GetRelativePath(gitRoot, f).Replace('\\', '/'))
+            .Order(StringComparer.Ordinal)
+            .ToList();
+        return files.Count == 0 ? "aucune" : string.Join(", ", files);
+    }
+
+    /// <summary>Un modèle de demande pour un outil d'éditeur : ce qu'il faut préciser pour que l'agent vise juste.</summary>
+    public const string EditorToolTemplate = """
+        Outil d'éditeur (extension du jeu) : <ce qu'il fait>.
+
+        Où : <panneau à droite | panneau au centre | section de l'inspecteur des <nœud> | gizmo des <nœud> | commande du menu Outils>.
+        Ce qu'il montre : <données, calculs, listes>.
+        Ce qu'on peut y faire : <boutons, poignées, modifications de la scène (annulables)>.
+        Vérification : <ce qu'un test sans fenêtre doit contrôler>.
+        """;
 }

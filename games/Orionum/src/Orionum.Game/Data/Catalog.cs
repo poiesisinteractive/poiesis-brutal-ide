@@ -1,4 +1,5 @@
 using Brutal.Numerics;
+using Poiesis.Engine;
 using Poiesis.Engine.Scene;
 
 namespace Orionum.Game;
@@ -31,6 +32,12 @@ public sealed class CompiledClass
     public CompiledWeapon[] Weapons { get; }
     public float TurnRate { get; }
     public float MaxRange { get; }
+
+    /// <summary>Maillage propre à la classe (coque générée ou modèle importé), numéro dans <see cref="Catalog.Meshes"/> ; 0 sinon.</summary>
+    public int MeshAsset { get; internal set; }
+
+    /// <summary>Taille de rendu d'une coque de la classe (mètres) : proportions du maillage, longueur de la classe.</summary>
+    public float3 RenderSize { get; internal set; }
 }
 
 /// <summary>Données statiques chargées avec le module : classes de vaisseaux et compositions de flottes.</summary>
@@ -59,15 +66,70 @@ public sealed class Catalog
 
     public void Add(FleetComposition f) => _fleets[f.Id] = f;
 
+    /// <summary>Les maillages des classes (coques générées, modèles importés), installés dans chaque monde.</summary>
+    public MeshLibrary Meshes { get; } = new();
+
+    /// <summary>La texture de blindage des coques générées, partagée par toutes les classes.</summary>
+    static TextureData? _plating;
+
     public static Catalog Load(string contentRoot)
     {
         var catalog = new Catalog();
         foreach (var file in Files(Path.Combine(contentRoot, "ships"), "*.ship.json"))
-            catalog.Add(Read<ShipClass>(file));
+        {
+            var def = Read<ShipClass>(file);
+            catalog.Add(def);
+            try
+            {
+                catalog.AttachMesh(catalog.Classes[^1], contentRoot);
+            }
+            catch (Exception ex) when (ex is not InvalidDataException)
+            {
+                throw new InvalidDataException($"{Path.GetFileName(file)} : maillage : {ex.Message}", ex);
+            }
+        }
         foreach (var file in Files(Path.Combine(contentRoot, "fleets"), "*.fleet.json"))
             catalog.Add(Read<FleetComposition>(file));
         return catalog;
     }
+
+    /// <summary>
+    /// Le maillage d'une classe : modèle glTF s'il y en a un, sinon coque générée, sinon forme de base (<see cref="ShipClass.Mesh"/>).
+    /// </summary>
+    void AttachMesh(CompiledClass cls, string contentRoot)
+    {
+        var (asset, size) = ShipMesh(cls.Def, contentRoot);
+        cls.RenderSize = size;
+        if (asset is not null)
+            cls.MeshAsset = Meshes.Add(asset);
+    }
+
+    /// <summary>
+    /// Le maillage d'une classe et sa taille de rendu (mètres). Modèle glTF (mis à la longueur de la classe), coque
+    /// générée (déjà en mètres), ou forme de base (pas de maillage propre). L'origine du vaisseau reste celle du
+    /// maillage : les tourelles, placées par rapport à elle, tombent sur la coque.
+    /// </summary>
+    public static (MeshAsset? Asset, float3 Size) ShipMesh(ShipClass def, string contentRoot)
+    {
+        if (def.Model is { Length: > 0 } model)
+        {
+            var imported = Poiesis.Engine.Assets.ModelImporter.Load(Path.Combine(contentRoot, model));
+            var (min, max) = imported.Mesh.Bounds();
+            float span = MathF.Max(max.Z - min.Z, 1e-3f);
+            var size = imported.Mesh.NormalizeToUnitBox(keepOrigin: true);
+            return (new MeshAsset("model:" + model, imported.Mesh, imported.BaseColor), size * (def.LengthMeters / span));
+        }
+        if (def.Design is { } design)
+        {
+            var mesh = HullGenerator.Build(design, def.LengthMeters).Mesh;
+            var size = mesh.NormalizeToUnitBox(keepOrigin: true);
+            return (new MeshAsset("hull:" + def.Id, mesh, _plating ??= HullGenerator.Plating()), size);
+        }
+        return (null, new float3(def.LengthMeters * 0.24f, def.LengthMeters * 0.16f, def.LengthMeters));
+    }
+
+    /// <summary>La texture de blindage partagée par les coques générées.</summary>
+    public static TextureData Plating => _plating ??= HullGenerator.Plating();
 
     static T Read<T>(string file)
     {

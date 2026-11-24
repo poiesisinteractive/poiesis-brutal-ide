@@ -127,6 +127,12 @@ public sealed record ShipClass
     public Role Role { get; init; }
     public MeshKind Mesh { get; init; } = MeshKind.Hull;
 
+    /// <summary>Coque générée par le concepteur de coques ; prioritaire sur <see cref="Mesh"/>.</summary>
+    public HullDesign? Design { get; init; }
+
+    /// <summary>Modèle glTF importé (chemin relatif à <c>content/</c>, ex. « models/frigate.glb ») ; prioritaire sur tout le reste.</summary>
+    public string? Model { get; init; }
+
     public float LengthMeters { get; init; } = 100;
     public float Radius { get; init; } = 50;
 

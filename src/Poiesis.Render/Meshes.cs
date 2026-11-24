@@ -1,46 +1,11 @@
 using Brutal.Numerics;
+using Poiesis.Engine;
 
 namespace Poiesis.Render;
 
-/// <summary>Un maillage en mémoire : positions, normales (à facettes) et indices.</summary>
-public sealed class MeshData
-{
-    public List<float3> Positions { get; } = new();
-    public List<float3> Normals { get; } = new();
-    public List<uint> Indices { get; } = new();
-
-    /// <summary>Ajoute un triangle à facette plate (normale calculée).</summary>
-    public void Triangle(float3 a, float3 b, float3 c)
-    {
-        var n = float3.Normalize(float3.Cross(b - a, c - a));
-        uint i = (uint)Positions.Count;
-        Positions.Add(a); Positions.Add(b); Positions.Add(c);
-        Normals.Add(n); Normals.Add(n); Normals.Add(n);
-        Indices.Add(i); Indices.Add(i + 1); Indices.Add(i + 2);
-    }
-
-    public void Quad(float3 a, float3 b, float3 c, float3 d)
-    {
-        Triangle(a, b, c);
-        Triangle(a, c, d);
-    }
-
-    /// <summary>Un prisme entre deux sections (4 coins chacune, dans le même ordre), extrémités fermées.</summary>
-    public void Loft(ReadOnlySpan<float3> back, ReadOnlySpan<float3> front)
-    {
-        for (int i = 0; i < 4; i++)
-        {
-            int j = (i + 1) % 4;
-            Quad(back[i], back[j], front[j], front[i]);
-        }
-        Quad(back[3], back[2], back[1], back[0]);
-        Quad(front[0], front[1], front[2], front[3]);
-    }
-}
-
 /// <summary>
 /// Formes procédurales unitaires (contenues dans [-0,5 ; 0,5]³, proue vers +Z), mises à l'échelle par instance.
-/// Ce sont des formes d'éditeur : les vrais modèles de vaisseaux viendront au jalon 3.
+/// Les jeux fournissent leurs propres maillages (générateur, modèles glTF) par la <see cref="MeshLibrary"/>.
 /// </summary>
 public static class Meshes
 {

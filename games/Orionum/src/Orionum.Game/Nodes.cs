@@ -121,7 +121,8 @@ public sealed class FleetNode : Node
         world.Add(e, new Renderable
         {
             Mesh = def.Mesh,
-            Size = new float3(def.LengthMeters * 0.24f, def.LengthMeters * 0.16f, def.LengthMeters),
+            Asset = cls.MeshAsset,
+            Size = cls.RenderSize,
             Color = Visuals.FactionHull(Faction),
         });
     }
