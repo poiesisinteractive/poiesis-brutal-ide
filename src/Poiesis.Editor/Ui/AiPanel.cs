@@ -51,19 +51,59 @@ sealed class AiPanel(EditorSession session, ProjectConfig project, LogBuffer log
     string? _error;
     readonly ImInputString _description = Widgets.Multiline("ai-description");
 
+    SceneAgentTab? _sceneTab;
+
+    /// <summary>L'onglet « Scène » : l'IA qui agit sur la scène ouverte.</summary>
+    public SceneAgentTab Scene => _sceneTab ??= new SceneAgentTab(session, log, () => Provider);
+
+    bool _showSceneTab;
+
+    /// <summary>Met l'onglet « Scène » au premier plan (scripts, raccourcis).</summary>
+    public void ShowSceneTab() => _showSceneTab = true;
+
     public void Draw()
     {
         Drain();
+        Scene.Update();
+        if (_showSceneTab)
+            ImGui.SetWindowFocus("IA"u8);
         if (ImGui.Begin("IA"u8))
         {
-            switch (_state)
+            if (ImGui.BeginTabBar("ia-modes"u8))
             {
-                case State.Idle: DrawRequest(); break;
-                case State.Running: DrawRunning(); break;
-                case State.Review: DrawReview(); break;
+                if (ImGui.BeginTabItem("Fonctionnalité"u8))
+                {
+                    switch (_state)
+                    {
+                        case State.Idle: DrawRequest(); break;
+                        case State.Running: DrawRunning(); break;
+                        case State.Review: DrawReview(); break;
+                    }
+                    ImGui.EndTabItem();
+                }
+                if (ImGui.BeginTabItem("Scène"u8, _showSceneTab ? ImGuiTabItemFlags.SetSelected : ImGuiTabItemFlags.None))
+                {
+                    _showSceneTab = false;
+                    DrawProviderPicker();
+                    Scene.Draw();
+                    ImGui.EndTabItem();
+                }
+                ImGui.EndTabBar();
             }
         }
         ImGui.End();
+    }
+
+    void DrawProviderPicker()
+    {
+        var providers = ProviderSettings.Defaults;
+        if (ImGui.BeginCombo("Fournisseur##scene"u8, $"{Provider.Name} · {Provider.Model}"))
+        {
+            for (int i = 0; i < providers.Count; i++)
+                if (ImGui.Selectable($"{providers[i].Name} · {providers[i].Model}", i == _provider))
+                    _provider = i;
+            ImGui.EndCombo();
+        }
     }
 
     void DrawRequest()

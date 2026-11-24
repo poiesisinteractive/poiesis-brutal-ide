@@ -167,17 +167,70 @@ public sealed class EditorSession : IDisposable
         _baselines.Clear();
     }
 
+    // ----- Propositions de l'IA sur la scène -----------------------------------------------------------
+
+    /// <summary>Les modifications que l'IA propose sur la scène ouverte, à relire (fantômes dans le viewport).</summary>
+    public ScenePlan? Plan { get; private set; }
+
+    /// <summary>La scène telle qu'elle serait avec toutes les propositions, cuite pour l'aperçu.</summary>
+    public World? PlanWorld { get; private set; }
+
+    public BakeContext? PlanBake { get; private set; }
+
+    /// <summary>Les propositions cochées : seules elles sont dessinées en fantôme et appliquées.</summary>
+    public HashSet<SceneOp> PlanChosen { get; } = new();
+
+    public void SetPlan(ScenePlan? plan)
+    {
+        Plan = plan;
+        PlanChosen.Clear();
+        PlanWorld = null;
+        PlanBake = null;
+        if (plan is null)
+            return;
+        PlanChosen.UnionWith(plan.Ops);
+        if (Modules.Module is { } module)
+        {
+            try
+            {
+                var world = new World();
+                module.InitializeWorld(world);
+                PlanBake = SceneBaker.Bake(plan.Working, world);
+                PlanWorld = world;
+            }
+            catch (Exception ex)
+            {
+                Log?.Invoke($"Aperçu de la proposition impossible : {ex.Message}");
+            }
+        }
+    }
+
+    /// <summary>Applique les propositions cochées en une commande annulable, puis oublie la proposition.</summary>
+    public IReadOnlyList<string> ApplyPlan()
+    {
+        if (Plan is not { } plan)
+            return [];
+        var (command, skipped) = plan.Apply(plan.Ops.Where(PlanChosen.Contains));
+        if (command is not null)
+            History.Execute(command);
+        SetPlan(null);
+        return skipped;
+    }
+
     // ----- Copier-coller -----------------------------------------------------------------------------
 
     const string ClipboardKind = "poiesis.nodes";
 
     /// <summary>Le texte à mettre dans le presse-papiers pour copier un nœud et ses enfants (une instance reste une instance).</summary>
-    public string CopyNode(Node node)
+    public string CopyNode(Node node) => CopyNodes([node]);
+
+    /// <summary>Le texte du presse-papiers pour plusieurs nœuds (chacun avec ses enfants), dans l'ordre donné.</summary>
+    public string CopyNodes(IEnumerable<Node> nodes)
     {
         var doc = new System.Text.Json.Nodes.JsonObject
         {
             ["kind"] = ClipboardKind,
-            ["nodes"] = new System.Text.Json.Nodes.JsonArray(Serializer.ToJson(node)),
+            ["nodes"] = new System.Text.Json.Nodes.JsonArray(nodes.Select(n => (System.Text.Json.Nodes.JsonNode)Serializer.ToJson(n)).ToArray()),
         };
         return SceneSerializer.ToJsonString(doc);
     }
@@ -226,7 +279,7 @@ public sealed class EditorSession : IDisposable
         if (pasted.Count == 0)
             return pasted;
         History.Execute(new CompositeCommand(pasted.Count == 1 ? $"Coller {pasted[0].Name}" : $"Coller {pasted.Count} nœuds", commands));
-        Selection = pasted[^1];
+        SetSelection(pasted);
         return pasted;
     }
 
@@ -244,7 +297,50 @@ public sealed class EditorSession : IDisposable
 
     public string? ScenePath { get; private set; }
 
-    public Node? Selection { get; set; }
+    readonly List<Node> _selected = new();
+
+    /// <summary>
+    /// Le nœud principal de la sélection (le dernier choisi) : inspecteur, gizmos, cadrage. L'affecter remplace toute
+    /// la sélection par ce seul nœud.
+    /// </summary>
+    public Node? Selection
+    {
+        get => _selected.Count > 0 ? _selected[^1] : null;
+        set
+        {
+            _selected.Clear();
+            if (value is not null)
+                _selected.Add(value);
+        }
+    }
+
+    /// <summary>Tous les nœuds sélectionnés, le principal en dernier.</summary>
+    public IReadOnlyList<Node> SelectedNodes => _selected;
+
+    public bool IsSelected(Node node) => _selected.Contains(node);
+
+    /// <summary>Ajoute un nœud à la sélection (il devient le principal), ou l'en retire s'il y était (Ctrl+clic).</summary>
+    public void ToggleSelection(Node node)
+    {
+        if (!_selected.Remove(node))
+            _selected.Add(node);
+    }
+
+    /// <summary>Remplace la sélection ; le dernier nœud devient le principal.</summary>
+    public void SetSelection(IEnumerable<Node> nodes)
+    {
+        _selected.Clear();
+        foreach (var n in nodes)
+            if (!_selected.Contains(n))
+                _selected.Add(n);
+    }
+
+    /// <summary>
+    /// Les nœuds sélectionnés qu'on peut supprimer, dupliquer ou déplacer dans l'arbre : ni la racine, ni un nœud
+    /// d'instance, ni un nœud dont un ancêtre est déjà sélectionné (il suit son parent).
+    /// </summary>
+    public IReadOnlyList<Node> SelectedRoots() =>
+        _selected.Where(n => n.Parent is { HasEditableChildren: true } && !_selected.Any(o => o != n && o.IsSelfOrAncestorOf(n))).ToList();
 
     /// <summary>Entité sélectionnée dans la partie en cours (slot), ou -1 : inspecteur d'entités et dessins de débogage.</summary>
     public int SelectedEntity { get; set; } = -1;
@@ -269,13 +365,14 @@ public sealed class EditorSession : IDisposable
     public bool HotReload(string assemblyPath)
     {
         bool wasDirty = IsDirty;
-        var (json, selectedId) = DetachScene();
+        var (json, selectedIds) = DetachScene();
 
         bool unloaded = Modules.Unload();
 
         Modules.Load(assemblyPath);
         Scene = Serializer.Read(json, ScenePath);
-        Selection = selectedId is { } id ? Scene.DescendantsAndSelf().FirstOrDefault(n => n.Id == id) : null;
+        var byId = Scene.DescendantsAndSelf().ToDictionary(n => n.Id);
+        SetSelection(selectedIds.Where(byId.ContainsKey).Select(id => byId[id]));
         if (!wasDirty)
             _savedRevision = Revision;   // recharger le code ne modifie pas le document
         Log?.Invoke($"Rechargé à chaud : {Modules.Module!.Name} (génération {Modules.Generation})");
@@ -287,13 +384,14 @@ public sealed class EditorSession : IDisposable
     /// le code non optimisé garde les temporaires d'un cadre vivants, ce qui bloquerait le déchargement.
     /// </summary>
     [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
-    (string Json, Guid? SelectedId) DetachScene()
+    (string Json, Guid[] SelectedIds) DetachScene()
     {
         if (PlayState != PlayState.Editing)
             Stop();
-        var result = (Serializer.Write(Scene), Selection?.Id);
+        var result = (Serializer.Write(Scene), _selected.Select(n => n.Id).ToArray());
         Scene = new SceneRoot();
         Selection = null;
+        SetPlan(null);   // la proposition tient des nœuds de l'ancienne assembly
         _baselines.Clear();
         History.Clear();   // les commandes retiennent des nœuds et des PropertyInfo
         Play = null;
@@ -304,6 +402,7 @@ public sealed class EditorSession : IDisposable
 
     public void NewScene()
     {
+        SetPlan(null);
         Scene = new SceneRoot { Name = "Nouvelle scène" };
         ScenePath = null;
         Selection = null;
@@ -313,6 +412,7 @@ public sealed class EditorSession : IDisposable
 
     public void OpenScene(string path)
     {
+        SetPlan(null);
         Scene = Serializer.Read(File.ReadAllText(path), path);
         ScenePath = Path.GetFullPath(path);
         Selection = null;

@@ -115,6 +115,15 @@ public sealed class ContentRefAttribute(string folder, string pattern) : Attribu
     public string Pattern { get; } = pattern;
 }
 
+/// <summary>
+/// La propriété (un nombre) que le gizmo d'échelle de l'éditeur fait varier : rayon d'un astre, espacement d'une
+/// formation… Par convention, comme <c>Position</c> (float3) pour le déplacement et <c>Heading</c> (degrés) pour la rotation.
+/// </summary>
+[AttributeUsage(AttributeTargets.Property)]
+public sealed class ScaleHandleAttribute : Attribute
+{
+}
+
 /// <summary>Bornes et pas de glissement d'une propriété numérique dans l'inspecteur.</summary>
 [AttributeUsage(AttributeTargets.Property)]
 public sealed class RangeAttribute(float min, float max, float speed = 1) : Attribute

@@ -43,7 +43,8 @@ sealed class EditorApp : IDisposable
     bool _showAbout;
     float _speed = 1;
     int _scriptWait = 2;
-    bool _waitReview;   // le script attend que les fenêtres existent
+    bool _waitReview;
+    bool _waitScene;   // le script attend que les fenêtres existent
 
     readonly Action<string> _requestCapture;
 
@@ -80,6 +81,7 @@ sealed class EditorApp : IDisposable
         _thumbnails = new ThumbnailService(vk, imgui.Renderer, _session, _extensions, _log, _project.Root);
         _content.Thumbnails = _thumbnails;
         _viewport.Extensions = _extensions;
+        _viewport.Cameras = new CameraBookmarks(_project.Root);
         _inspector.Extensions = _extensions.DrawInspectors;
         _splash = new Splash(vk, imgui.Renderer, options.SplashSeconds);
         _script = new Queue<string>(options.Script);
@@ -141,6 +143,12 @@ sealed class EditorApp : IDisposable
 
     void ReloadModule()
     {
+        if (_ai.Scene.IsRunning)
+        {
+            _log.Warn("éditeur", "L'IA prépare une proposition sur la scène : rechargement reporté.");
+            _reloadAfterBuild = false;
+            return;
+        }
         if (_analysis is { IsRunning: true })
         {
             _log.Warn("éditeur", "Une série de parties utilise le module : rechargement reporté. Arrêtez la série ou attendez sa fin.");
@@ -252,6 +260,18 @@ sealed class EditorApp : IDisposable
             ImGui.SetNextWindowDockID(window.DockId, ImGuiCond.FirstUseEver);
     }
 
+    void Arrange(IEditorCommand? command)
+    {
+        if (command is null)
+            _log.Info("éditeur", "Rien à disposer : les nœuds sont déjà en place.");
+        else
+            _session.History.Execute(command);
+    }
+
+    /// <summary>Sélectionne tous les nœuds de la scène qu'on peut transformer (ceux qui ont une position).</summary>
+    void SelectAll() =>
+        _session.SetSelection(SceneTransforms.Movable(_session.Scene.DescendantsAndSelf().Where(n => n.OwningInstance is null || n.InstanceOf is not null)));
+
     string? _openAfterConfirm;
 
     /// <summary>Ouvre une scène ; si la scène en cours a des modifications non enregistrées, demande d'abord.</summary>
@@ -347,6 +367,23 @@ sealed class EditorApp : IDisposable
                 _scenePanel.CutSelection();
             if (ImGui.MenuItem("Coller"u8, "Ctrl+V"u8, false, _session.Play is null))
                 _scenePanel.PasteHere();
+            ImGui.Separator();
+            if (ImGui.MenuItem("Tout sélectionner"u8, "Ctrl+A"u8, false, _session.Play is null))
+                SelectAll();
+            if (ImGui.BeginMenu("Disposer"u8, _session.Play is null && _session.SelectedNodes.Count > 1))
+            {
+                ImGui.TextDisabled($"Sur « {_session.Selection?.Name ?? ""} » (le dernier sélectionné)");
+                for (int axis = 0; axis < 3; axis++)
+                    if (ImGui.MenuItem($"Aligner sur {"XYZ"[axis]}"))
+                        Arrange(SceneTransforms.Align(_session.SelectedNodes, axis, _session.Selection!));
+                if (ImGui.MenuItem("Aligner les caps"u8))
+                    Arrange(SceneTransforms.AlignHeadings(_session.SelectedNodes, _session.Selection!));
+                ImGui.Separator();
+                foreach (int axis in new[] { 0, 2, 1 })
+                    if (ImGui.MenuItem($"Répartir sur {"XYZ"[axis]}", ""u8, false, _session.SelectedNodes.Count > 2))
+                        Arrange(SceneTransforms.Distribute(_session.SelectedNodes, axis));
+                ImGui.EndMenu();
+            }
             ImGui.EndMenu();
         }
         if (ImGui.BeginMenu("Jeu"u8))
@@ -385,6 +422,21 @@ sealed class EditorApp : IDisposable
                 _viewport.FrameSelection();
             if (ImGui.MenuItem("Disposition par défaut"u8))
                 _layoutBuilt = false;
+            if (ImGui.BeginMenu("Caméras"u8))
+            {
+                var saved = _viewport.Cameras?.Slots(_session.ScenePath).ToHashSet() ?? [];
+                for (int i = 1; i <= 9; i++)
+                    if (ImGui.MenuItem($"Revenir à la caméra {i}", $"{i}", false, saved.Contains(i)))
+                        _viewport.RecallCamera(i);
+                if (ImGui.BeginMenu("Enregistrer la vue"u8))
+                {
+                    for (int i = 1; i <= 9; i++)
+                        if (ImGui.MenuItem($"Caméra {i}{(saved.Contains(i) ? " (remplacer)" : "")}", $"Ctrl+{i}"))
+                            _viewport.SaveCamera(i);
+                    ImGui.EndMenu();
+                }
+                ImGui.EndMenu();
+            }
             ImGui.EndMenu();
         }
         if (ImGui.BeginMenu("Aide"u8))
@@ -451,6 +503,8 @@ sealed class EditorApp : IDisposable
                 _session.History.Undo();
             if (ImGui.Shortcut(ImGuiKey.Mod_Ctrl | ImGuiKey.Y, ImGuiInputFlags.RouteGlobal))
                 _session.History.Redo();
+            if (ImGui.Shortcut(ImGuiKey.Mod_Ctrl | ImGuiKey.A, ImGuiInputFlags.RouteGlobal) && _session.Play is null)
+                SelectAll();
         }
         if (ImGui.Shortcut(ImGuiKey.Mod_Ctrl | ImGuiKey.T, ImGuiInputFlags.RouteGlobal) && _tests.Available && !_tests.IsRunning)
             _tests.Start();
@@ -567,6 +621,12 @@ sealed class EditorApp : IDisposable
                 return;
             _waitReview = false;
         }
+        if (_waitScene)
+        {
+            if (_ai.Scene.IsRunning)
+                return;
+            _waitScene = false;
+        }
         if (_scriptWait > 0)
         {
             _scriptWait--;
@@ -577,7 +637,18 @@ sealed class EditorApp : IDisposable
             var (verb, arg) = cmd.Split(':', 2) is [var v, var a] ? (v, a) : (cmd, "");
             switch (verb)
             {
-                case "select": _session.Selection = _session.Scene.DescendantsAndSelf().FirstOrDefault(n => n.Name == arg); break;
+                case "select":
+                    // select:Nom ou select:Nom1,Nom2 (le dernier est le principal).
+                    _session.SetSelection(arg.Split(',').Select(name => _session.Scene.DescendantsAndSelf().FirstOrDefault(n => n.Name == name)).OfType<Poiesis.Engine.Scene.Node>());
+                    break;
+                case "select-all": SelectAll(); break;
+                case "mode": _viewport.Mode = arg switch { "rotate" => ViewportPanel.GizmoMode.Rotate, "scale" => ViewportPanel.GizmoMode.Scale, _ => ViewportPanel.GizmoMode.Move }; break;
+                case "local": _viewport.LocalFrame = arg != "off"; break;
+                case "snap": _viewport.Snap = arg != "off"; break;
+                case "align": Arrange(SceneTransforms.Align(_session.SelectedNodes, "xyz".IndexOf(arg), _session.Selection!)); break;
+                case "distribute": Arrange(SceneTransforms.Distribute(_session.SelectedNodes, "xyz".IndexOf(arg))); break;
+                case "camera-save": _viewport.SaveCamera(int.Parse(arg)); break;
+                case "camera": _viewport.RecallCamera(int.Parse(arg)); break;
                 case "frame": _viewport.FrameSelection(); break;
                 case "play": Play(); break;
                 case "pause": _session.TogglePause(); break;
@@ -603,6 +674,15 @@ sealed class EditorApp : IDisposable
                     _waitReview = true;
                     return;
                 case "accept": _ai.ScriptFinish(accept: true); break;
+                case "scene-ask":
+                    _ai.ShowSceneTab();
+                    _ai.Scene.Start(arg);
+                    break;
+                case "wait-scene":
+                    _waitScene = true;
+                    return;
+                case "scene-apply": _ai.Scene.Apply(); break;
+                case "scene-reject": _ai.Scene.Reject(); break;
                 case "capture": _requestCapture(Path.GetFullPath(arg)); break;
                 case "exit": QuitRequested = true; break;
                 case "open-first-location":

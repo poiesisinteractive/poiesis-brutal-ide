@@ -172,7 +172,7 @@ sealed class PropertyEditor(EditorSession session, ProjectConfig project)
         {
             var v = (bool)value!;
             if (ImGui.Checkbox(label, ref v))
-                session.History.Execute(new SetPropertyCommand(node, p, v));
+                Commit(node, p, v);
         }
         else if (type.IsEnum)
         {
@@ -180,7 +180,7 @@ sealed class PropertyEditor(EditorSession session, ProjectConfig project)
             {
                 foreach (var option in Enum.GetValues(type))
                     if (ImGui.Selectable(option.ToString()!, option.Equals(value)) && !option.Equals(value))
-                        session.History.Execute(new SetPropertyCommand(node, p, option));
+                        Commit(node, p, option);
                 ImGui.EndCombo();
             }
         }
@@ -195,7 +195,7 @@ sealed class PropertyEditor(EditorSession session, ProjectConfig project)
             {
                 foreach (var id in ids)
                     if (ImGui.Selectable(id, id == current) && id != current)
-                        session.History.Execute(new SetPropertyCommand(node, p, id));
+                        Commit(node, p, id);
                 ImGui.EndCombo();
             }
             if (missing)
@@ -208,7 +208,7 @@ sealed class PropertyEditor(EditorSession session, ProjectConfig project)
         {
             var v = (string?)value ?? "";
             if (Widgets.TextField(label, $"{node.Id}-{p.Name}", ref v) && v != (string?)value)
-                session.History.Execute(new SetPropertyCommand(node, p, v));
+                Commit(node, p, v);
         }
         else
         {
@@ -216,26 +216,56 @@ sealed class PropertyEditor(EditorSession session, ProjectConfig project)
         }
     }
 
+    /// <summary>
+    /// Les nœuds que modifie l'inspecteur : le nœud affiché, ou toute la sélection quand elle est d'un seul type
+    /// (édition groupée : la valeur choisie s'applique à tous).
+    /// </summary>
+    public IReadOnlyList<Node> Group { get; set; } = [];
+
+    IReadOnlyList<Node> Targets(Node node) => Group.Count > 1 && Group.Contains(node) ? Group : [node];
+
+    /// <summary>Une valeur validée : une commande annulable, pour le nœud ou tout le groupe.</summary>
+    void Commit(Node node, PropertyInfo p, object? value)
+    {
+        var targets = Targets(node);
+        if (targets.Count == 1)
+        {
+            session.History.Execute(new SetPropertyCommand(node, p, value));
+            return;
+        }
+        session.History.Execute(new CompositeCommand($"Modifier {p.Name} ({targets.Count} nœuds)",
+            targets.Select(t => (IEditorCommand)new SetPropertyCommand(t, p, value)).ToList()));
+    }
+
+    readonly Dictionary<Node, object?> _dragStarts = new();
+
     /// <summary>Applique la valeur en direct pendant le glissement ; au relâchement, en fait une commande annulable.</summary>
     void Live(Node node, PropertyInfo p, object newValue, bool changed)
     {
+        var targets = Targets(node);
         if (ImGui.IsItemActivated())
         {
             _dragNode = node;
             _dragProperty = p;
             _dragStartValue = p.GetValue(node);
+            _dragStarts.Clear();
+            foreach (var t in targets)
+                _dragStarts[t] = p.GetValue(t);
         }
         if (changed)
         {
-            p.SetValue(node, newValue);
+            foreach (var t in targets)
+                p.SetValue(t, newValue);
             session.Touch();
         }
         if (ImGui.IsItemDeactivated() && _dragNode == node && _dragProperty == p)
         {
             var final = p.GetValue(node);
-            p.SetValue(node, _dragStartValue);
-            if (!Equals(final, _dragStartValue))
-                session.History.Execute(new SetPropertyCommand(node, p, final));
+            foreach (var (t, start) in _dragStarts)
+                p.SetValue(t, start);
+            if (_dragStarts.Any(kv => !Equals(final, kv.Value)))
+                Commit(node, p, final);
+            _dragStarts.Clear();
             _dragNode = null;
             _dragProperty = null;
         }

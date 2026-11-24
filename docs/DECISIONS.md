@@ -138,6 +138,20 @@ Poiesis Brutal IDE est un éditeur de jeux à la manière de Godot ou Unity, con
 | L'IA et les outils d'éditeur | **L'agent reçoit un résumé de l'API, vérifié par un test**, et lit les extensions existantes | Le résumé évite qu'il invente l'API ; le test l'oblige à suivre ses évolutions. |
 | Réglages des extensions | **Texte, dans `.poiesis/extensions.json`** | Ils survivent aux rechargements sans retenir de type du jeu. |
 
+## Choix faits pendant le J4a (2026-11-24)
+
+| Sujet | Choix | Pourquoi |
+| --- | --- | --- |
+| Découpage du J4 | **J4a éditeur, J4b jeu** | L'éditeur ne dépend d'aucune décision ; l'audio attend le choix FMOD ou SDL_mixer. |
+| Sélection au rectangle | **Maj + glisser** (clic gauche) | Le glisser simple tourne la caméra depuis le jalon 1 ; on ne change pas ce geste. |
+| Nœud principal | **Le dernier sélectionné** | Référence naturelle pour aligner, pour le repère local et pour l'inspecteur (comme Blender et Unity). |
+| Inspecteur groupé | **Une valeur pour tous**, si les nœuds sont du même type | Le cas courant (même échelle, même composition pour plusieurs flottes) ; sinon seul le principal est affiché. |
+| Gizmo d'échelle | **Convention `[ScaleHandle]`** sur une propriété numérique | Les nœuds d'Orionum n'ont pas d'échelle géométrique ; ce qui « grandit » dépend du nœud (rayon, espacement). |
+| Magnétisme | **Pas de la grille affichée**, 15°, 10 % ; Ctrl l'inverse | Le pas suit le zoom : à 500 km de vue, 100 km ; de près, 1 km. |
+| Caméras enregistrées | **Par scène, sur le poste** (`.poiesis/cameras.json`) | Une aide de travail, pas une donnée du jeu (comme la disposition des panneaux). |
+| IA sur la scène | **Propositions sur une copie, fantômes, cases à cocher, une commande** | Rien ne change sans validation ; on garde une partie d'une proposition ; une annulation défait tout. |
+| Outils de l'agent de scène | **Scène et contenu seulement**, valeurs validées comme dans l'inspecteur | L'agent ne touche pas aux fichiers ; ses erreurs (type inconnu, hors bornes) lui reviennent pour qu'il corrige. |
+
 ## Questions encore ouvertes
 
 1. **Audio** : FMOD (bindings BRUTAL, mais licence FMOD à payer et bibliothèques natives non fournies) ou SDL_mixer (choix du POC, gratuit, plus limité) ?

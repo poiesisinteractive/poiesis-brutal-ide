@@ -175,14 +175,29 @@ Critère du J3 atteint : *le croiseur de la Coalition est conçu dans le concept
 
 Critère : *on compose la bataille à l'échelle de Wolf 359 (astres, flottes, escadres) en multi-sélection et magnétisme, ou en demandant à l'IA « place trois escadres en tenaille autour des Clans ». On voit l'aperçu, on valide, et la bataille a ses effets, son son et son HUD.*
 
+Découpé en deux : l'éditeur d'abord (aucune décision en attente), le jeu ensuite (l'audio attend le choix FMOD ou SDL_mixer).
+
+## J4a : édition de scène avancée et IA sur la scène ✅
+
+| Élément | État |
+| --- | --- |
+| **Multi-sélection** : Ctrl+clic dans l'arbre et le viewport, rectangle (Maj+glisser), Ctrl+A ; surbrillance ; inspecteur groupé (une valeur pour tous les nœuds d'un même type) ; supprimer, dupliquer, copier, couper le groupe | ✅ |
+| **Gizmos** déplacer (W), tourner (E), échelle (R) autour du centre du groupe ; repère local (cap du nœud principal) ou global (L) ; magnétisme sur le pas de la grille, par 15°, par 10 % (M, Ctrl l'inverse) ; barre d'outils du viewport | ✅ vérifié à la souris : groupe tourné de 90°, une seule annulation |
+| **Échelle** par convention `[ScaleHandle]` (rayon d'un astre, espacement d'une flotte) ; un groupe s'écarte aussi de son centre | ✅ |
+| **Disposer** : aligner sur X, Y, Z ou sur le cap du dernier sélectionné, répartir à intervalles égaux | ✅ |
+| **Caméras enregistrées** par scène (Ctrl+1 à 9, 1 à 9, menu Affichage), dans `.poiesis/cameras.json` | ✅ |
+| **IA qui agit sur la scène ouverte** : l'agent lit la scène et les types de nœuds, propose ajouts, instances, propriétés, renommages et suppressions sur une copie ; fantômes cyan (ajouts, nouvelles places), rouges (suppressions) et traits de déplacement ; propositions à cocher ; une seule commande annulable | ✅ vérifié avec un agent simulé : trois escadres en tenaille autour des Clans |
+
+Corrigé en chemin : rappeler une caméra faisait planter l'éditeur (le format de lecture des données demande un constructeur sans paramètre) ; l'agent de scène n'était relevé que si son onglet était visible.
+
+![Deux flottes sélectionnées, gizmo de rotation du groupe, magnétisme](images/multi-selection.png)
+
+## J4b : effets, son, HUD et menus
+
 Jeu :
 - effets : tirs, impacts de bouclier hexagonaux, explosions, HDR et bloom en Vulkan ;
-- audio selon la décision FMOD ou SDL_mixer, avec des banques de cues éditables ;
+- audio selon la décision FMOD ou SDL_mixer (question ouverte n° 1), avec des banques de cues éditables ;
 - HUD et menus.
-
-Éditeur :
-- **édition de scène avancée** : multi-sélection (rectangle, Ctrl), gizmo d'échelle, magnétisme sur la grille, repère local ou global, alignement et répartition, caméras enregistrées ;
-- **IA qui agit sur la scène ouverte** : elle propose des commandes d'éditeur, affichées en fantôme dans le viewport et en liste dans le panneau IA. On les applique d'un clic, en une seule commande annulable, ou on les refuse.
 
 ## Plus tard
 

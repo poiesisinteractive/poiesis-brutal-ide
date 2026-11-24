@@ -12,7 +12,16 @@ BRUTAL fournit l'interop, la mémoire, les maths, les jobs et les bindings natif
 
 ## État
 
-Jalon 3b terminé, 61 tests passent. Le jalon 3 (modèles, contenu, réutilisation) est complet. On peut :
+Jalon 4a terminé, 68 tests passent. On peut :
+- **composer une scène à plusieurs nœuds** : multi-sélection (Ctrl+clic, Maj+glisser pour un rectangle, Ctrl+A), édition groupée dans l'inspecteur, suppression, duplication et copie du groupe ;
+- **transformer** avec trois gizmos (déplacer W, tourner E, échelle R), autour du centre du groupe, dans le repère du monde ou du nœud (L), avec magnétisme sur la grille, par 15° et par 10 % (M, Ctrl l'inverse) ;
+- **disposer** : aligner sur un axe ou sur le cap du dernier sélectionné, répartir à intervalles égaux (Édition > Disposer) ;
+- **enregistrer des caméras** par scène (Ctrl+1 à 9) et y revenir (1 à 9) ;
+- **demander à l'IA de modifier la scène** (panneau IA, onglet Scène) : sa proposition s'affiche en fantôme dans le viewport, on coche ce qu'on garde et on applique en une seule commande annulable.
+
+![L'IA propose trois escadres en tenaille autour des Clans : en fantôme dans le viewport, à cocher dans le panneau IA](docs/images/ai-scene-proposal.png)
+
+Au jalon 3b, le jalon 3 (modèles, contenu, réutilisation) s'est achevé. On peut :
 - **concevoir une coque** dans le concepteur d'Orionum, une extension du jeu : proue, segments, superstructures, tuyères et quille, avec un aperçu 3D. Les tourelles se posent sur la coque, puis on enregistre dans la classe de vaisseau (le jeu est rechargé) ou on exporte en glTF ;
 - **importer des modèles glTF** (`.glb`, `.gltf`), optimisés par meshoptimizer, avec leur texture en PNG, JPEG ou KTX2 (Basis Universal). Une classe de vaisseau les désigne par `"model": "models/….glb"` ;
 - voir le contenu en **vignettes** rendues hors écran : scènes, modèles, et classes de vaisseaux (le jeu fournit leur vignette) ;
@@ -101,6 +110,11 @@ Le dossier passé en argument est un projet de jeu : il contient un `poiesis.pro
 | Vignettes du contenu | bouton « Vignettes » du panneau Contenu (et bulle au survol d'un fichier) |
 | Concevoir une coque | onglet « Concepteur de coques », à côté du viewport : choisir la classe, régler, « Poser les tourelles sur la coque », « Enregistrer et recharger » |
 | Demander un outil d'éditeur à l'IA | panneau IA > « Modèle : outil d'éditeur », compléter, Lancer |
+| Sélection multiple | Ctrl+clic (arbre ou viewport), Maj+glisser (rectangle), Ctrl+A ; le dernier choisi est le principal |
+| Gizmos | W déplacer, E tourner, R échelle ; L repère local ou global ; M magnétisme (Ctrl l'inverse pendant le glissement) |
+| Aligner, répartir | Édition > Disposer (sur le dernier sélectionné) |
+| Caméras enregistrées | Ctrl+1 à 9 pour enregistrer, 1 à 9 pour revenir (Affichage > Caméras) |
+| Modifier la scène avec l'IA | panneau IA, onglet Scène : demander, relire le fantôme, cocher, Appliquer |
 
 L'éditeur de code se règle dans `<projet>/.poiesis/settings.json` (VS Code par défaut) :
 
@@ -145,7 +159,7 @@ dotnet run --project src/Poiesis.Headless -c Release -- games/Orionum/src/Orionu
 
 ### Vérifier l'éditeur sans écran
 
-L'éditeur tourne aussi sans GPU, avec le Vulkan logiciel de Mesa (lavapipe), et sans écran, sous Xvfb. C'est ainsi qu'il est vérifié dans le cloud et qu'il pourra l'être en CI. `--capture` enregistre une image puis quitte. `--do` joue un petit script : `select:<nom>`, `frame`, `play`, `pause`, `step:<n>`, `advance:<secondes>`, `snapshot`, `restore`, `entity:<slot ou nom de flotte>`, `channel:<canal>`, `about`, `build`, `wait:<images>`, `focus:<panneau>`, `open:<scène>`, `save`, `copy`, `paste`, `instantiate:<scène>`, `move:<de>><vers>`, `set:<Propriété>=<json>`, `tool:<commande>`, `grid`, `content-select:<chemin>`, `feature:<titre>|<description>`, `wait-review`, `accept`, `capture:<png>`, `exit`, `tests[:filtre]`, `open-first-location`, `export:<windows|linux>`, `series:<n>`, `provider:<nom>`, `ask:<question>`.
+L'éditeur tourne aussi sans GPU, avec le Vulkan logiciel de Mesa (lavapipe), et sans écran, sous Xvfb. C'est ainsi qu'il est vérifié dans le cloud et qu'il pourra l'être en CI. `--capture` enregistre une image puis quitte. `--do` joue un petit script : `select:<nom>`, `frame`, `play`, `pause`, `step:<n>`, `advance:<secondes>`, `snapshot`, `restore`, `entity:<slot ou nom de flotte>`, `channel:<canal>`, `about`, `build`, `wait:<images>`, `focus:<panneau>`, `open:<scène>`, `save`, `copy`, `paste`, `instantiate:<scène>`, `move:<de>><vers>`, `set:<Propriété>=<json>`, `tool:<commande>`, `grid`, `content-select:<chemin>`, `feature:<titre>|<description>`, `wait-review`, `accept`, `select-all`, `mode:<move|rotate|scale>`, `local`, `snap`, `align:<x|y|z>`, `distribute:<x|y|z>`, `camera-save:<n>`, `camera:<n>`, `scene-ask:<demande>`, `wait-scene`, `scene-apply`, `scene-reject`, `capture:<png>`, `exit`, `tests[:filtre]`, `open-first-location`, `export:<windows|linux>`, `series:<n>`, `provider:<nom>`, `ask:<question>`.
 
 ```sh
 sudo apt-get install -y xvfb mesa-vulkan-drivers libvulkan1

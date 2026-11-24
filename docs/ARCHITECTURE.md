@@ -185,6 +185,23 @@ Orionum                HullDesign · HullGenerator · Catalog.ShipMesh · HullDe
 - **Vignettes** : un troisième rendu, 192 × 192, relu (`RenderToPixels`) et enregistré en PNG dans `.poiesis/thumbnails/`, sous une clé faite du fichier, de sa date et de la génération du module. Les scènes sont cuites avec le module ; les modèles importés ; le reste est demandé au jeu (`EditorRegistry.Thumbnail("*.ship.json", …)`). Une vignette par image au plus.
 - **IA et outils d'éditeur** : le contexte de l'agent contient `EditorApiReference.Summary` et la liste des extensions existantes ; un test vérifie que ce résumé cite chaque membre public de l'API. Le prompt système dit qu'un outil d'éditeur est une extension du jeu, jamais un changement de `src/Poiesis.*`.
 
+## Édition avancée et IA sur la scène (J4a)
+
+- **Sélection** : `EditorSession.SelectedNodes` (le principal en dernier, `Selection` reste le principal pour les panneaux qui n'en voient qu'un). `SelectedRoots()` écarte la racine, les nœuds d'instance et ceux dont un ancêtre est déjà sélectionné : c'est le groupe qu'on supprime, duplique ou coupe.
+- **Transformations** (`SceneTransforms`, `TransformDrag`, Editor.Core) : par convention, `Position` (float3), `Heading` (degrés) et la propriété `[ScaleHandle]`. Un glissement garde les valeurs de départ, applique en direct, puis rend une seule commande arrondie (mètre, dixième de degré, centième). Rotation et échelle d'un groupe se font autour de la moyenne des positions. Aligner et répartir rendent aussi une seule commande.
+- **Viewport** : modes W, E, R, repère local tiré du cap du nœud principal, magnétisme absolu sur la grille en repère global (le centre du groupe tombe sur une ligne), relatif en repère local ; rectangle de sélection sur les entités projetées ; caméras enregistrées par scène.
+- **IA sur la scène** (`ScenePlan`) :
+
+```text
+panneau IA, onglet Scène ── AgentLoop(fournisseur, ScenePlan.Tools()) ── copie de la scène (Working)
+   get_scene · list_node_types · list_scenes · add_node · instantiate_scene · set_property · rename_node · remove_node
+        └─ chaque outil valide (type, bornes, références de contenu) et note une SceneOp
+EditorSession.SetPlan ── cuisson de la copie ── viewport : fantômes (ajouts, nouvelles places), rouge (suppressions)
+Appliquer ── ScenePlan.Apply(ops cochées) ── une CompositeCommand sur la vraie scène (opérations sautées signalées)
+```
+
+  L'agent n'a pas accès aux fichiers : seulement à la scène ouverte, par ces outils. La copie et la proposition tiennent des nœuds du jeu : elles sont oubliées au rechargement, et le rechargement attend la fin d'un agent en cours.
+
 ## Rendu (Poiesis.Render)
 
 - **`VulkanContext`** : instance, surface, device (GPU dédié de préférence, sinon intégré, sinon logiciel), file unique dessin et présentation, allocateur VMA, envois ponctuels (`Immediate`).

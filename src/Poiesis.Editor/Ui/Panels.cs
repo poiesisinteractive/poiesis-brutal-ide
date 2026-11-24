@@ -15,7 +15,7 @@ namespace Poiesis.Editor.Ui;
 /// </summary>
 sealed class ScenePanel(EditorSession session, ProjectConfig project, LogBuffer log, Action<string> openScene)
 {
-    Node? _pendingDelete;
+    List<Node>? _pendingDelete;
     (Node Node, Node NewParent)? _pendingMove;
     (string Path, Node Parent)? _pendingInstance;
     Node? _saveAsScene;
@@ -39,12 +39,13 @@ sealed class ScenePanel(EditorSession session, ProjectConfig project, LogBuffer 
         ImGui.End();
 
         // Les modifications de l'arbre se font hors du parcours.
-        if (_pendingDelete is { } del)
+        if (_pendingDelete is { Count: > 0 } del)
         {
-            if (session.Selection is { } sel && del.IsSelfOrAncestorOf(sel))
-                session.Selection = null;
-            session.History.Execute(new RemoveNodeCommand(del));
             _pendingDelete = null;
+            session.SetSelection(session.SelectedNodes.Where(n => !del.Any(d => d.IsSelfOrAncestorOf(n))).ToList());
+            session.History.Execute(del.Count == 1
+                ? new RemoveNodeCommand(del[0])
+                : new CompositeCommand($"Supprimer {del.Count} nœuds", del.Select(d => (IEditorCommand)new RemoveNodeCommand(d)).ToList()));
         }
         if (_pendingMove is { } move)
         {
@@ -80,7 +81,7 @@ sealed class ScenePanel(EditorSession session, ProjectConfig project, LogBuffer 
             flags |= ImGuiTreeNodeFlags.DefaultOpen;
         if (node.Children.Count == 0)
             flags |= ImGuiTreeNodeFlags.Leaf;
-        if (node == session.Selection)
+        if (session.IsSelected(node))
             flags |= ImGuiTreeNodeFlags.Selected;
 
         var typeName = TypeName(node);
@@ -100,7 +101,12 @@ sealed class ScenePanel(EditorSession session, ProjectConfig project, LogBuffer 
         }
 
         if (ImGui.IsItemClicked() && !ImGui.IsItemToggledOpen())
-            session.Selection = node;
+        {
+            if (ImGui.GetIO().KeyCtrl)
+                session.ToggleSelection(node);
+            else
+                session.Selection = node;
+        }
         if (ImGui.IsItemHovered())
             ImGui.SetItemTooltip(node.InstanceOf is { } p ? $"{typeName} · instance de {p}"
                 : inInstance ? $"{typeName} · vient de l'instance « {node.OwningInstance!.Name} »" : typeName);
@@ -166,7 +172,10 @@ sealed class ScenePanel(EditorSession session, ProjectConfig project, LogBuffer 
     {
         if (!ImGui.BeginPopupContextItem())
             return;
-        session.Selection = node;
+        // Clic droit dans une sélection multiple : on la garde, les commandes s'appliquent à tout le groupe.
+        if (!session.IsSelected(node))
+            session.Selection = node;
+        var group = Group(node);
         bool editableChildren = node.HasEditableChildren;
         bool editable = node.Parent is { HasEditableChildren: true };
 
@@ -191,16 +200,17 @@ sealed class ScenePanel(EditorSession session, ProjectConfig project, LogBuffer 
             ImGui.EndMenu();
         }
         ImGui.Separator();
-        if (ImGui.MenuItem("Copier"u8, "Ctrl+C"u8))
-            Copy(node);
-        if (ImGui.MenuItem("Couper"u8, "Ctrl+X"u8, false, editable))
-            Cut(node);
+        string many = group.Count > 1 ? $" ({group.Count})" : "";
+        if (ImGui.MenuItem("Copier" + many, "Ctrl+C"u8))
+            Copy(group);
+        if (ImGui.MenuItem("Couper" + many, "Ctrl+X"u8, false, editable))
+            Cut(group);
         if (ImGui.MenuItem("Coller"u8, "Ctrl+V"u8, false, EditorSession.IsNodeClipboard(Clipboard())))
             Paste(node);
-        if (ImGui.MenuItem("Dupliquer"u8, "Ctrl+D"u8, false, editable))
-            Duplicate(node);
-        if (ImGui.MenuItem("Supprimer"u8, "Suppr"u8, false, editable))
-            _pendingDelete = node;
+        if (ImGui.MenuItem("Dupliquer" + many, "Ctrl+D"u8, false, editable))
+            Duplicate(group);
+        if (ImGui.MenuItem("Supprimer" + many, "Suppr"u8, false, editable))
+            _pendingDelete = [.. group];
         ImGui.Separator();
         if (ImGui.MenuItem("Enregistrer comme scène…"u8, ""u8, false, editable && node.InstanceOf is null))
         {
@@ -290,16 +300,25 @@ sealed class ScenePanel(EditorSession session, ProjectConfig project, LogBuffer 
         }
     }
 
-    void Copy(Node node)
+    /// <summary>Le groupe sur lequel agit une commande : la sélection si le nœud en fait partie, sinon le nœud seul.</summary>
+    IReadOnlyList<Node> Group(Node node)
     {
-        ImGui.SetClipboardText(session.CopyNode(node));
-        log.Info("scène", $"Copié : {node.Name}");
+        if (!session.IsSelected(node) || session.SelectedNodes.Count < 2)
+            return [node];
+        var roots = session.SelectedRoots();
+        return roots.Count > 0 ? roots : [node];
     }
 
-    void Cut(Node node)
+    void Copy(IReadOnlyList<Node> nodes)
     {
-        ImGui.SetClipboardText(session.CopyNode(node));
-        _pendingDelete = node;
+        ImGui.SetClipboardText(session.CopyNodes(nodes));
+        log.Info("scène", nodes.Count == 1 ? $"Copié : {nodes[0].Name}" : $"Copié : {nodes.Count} nœuds");
+    }
+
+    void Cut(IReadOnlyList<Node> nodes)
+    {
+        ImGui.SetClipboardText(session.CopyNodes(nodes));
+        _pendingDelete = [.. nodes];
     }
 
     void Paste(Node? target)
@@ -308,13 +327,20 @@ sealed class ScenePanel(EditorSession session, ProjectConfig project, LogBuffer 
             Try(() => session.Paste(text, target), "Coller");
     }
 
-    void Duplicate(Node node)
+    void Duplicate(IReadOnlyList<Node> nodes)
     {
         Try(() =>
         {
-            var copy = session.CloneNode(node);
-            session.History.Execute(new InsertNodeCommand(node.Parent!, node.Parent!.IndexOf(node) + 1, copy));
-            session.Selection = copy;
+            var commands = new List<IEditorCommand>();
+            var copies = new List<Node>();
+            foreach (var node in nodes)
+            {
+                var copy = session.CloneNode(node);
+                commands.Add(new InsertNodeCommand(node.Parent!, node.Parent!.IndexOf(node) + 1, copy));
+                copies.Add(copy);
+            }
+            session.History.Execute(commands.Count == 1 ? commands[0] : new CompositeCommand($"Dupliquer {commands.Count} nœuds", commands));
+            session.SetSelection(copies);
         }, "Dupliquer");
     }
 
@@ -327,29 +353,30 @@ sealed class ScenePanel(EditorSession session, ProjectConfig project, LogBuffer 
             Paste(session.Selection);
         if (session.Selection is not { } node)
             return;
+        var group = Group(node);
         if (ImGui.Shortcut(ImGuiKey.Mod_Ctrl | ImGuiKey.C, ImGuiInputFlags.RouteGlobal))
-            Copy(node);
-        if (node.Parent is not { HasEditableChildren: true })
+            Copy(group);
+        if (group.Any(n => n.Parent is not { HasEditableChildren: true }))
             return;
         if (ImGui.IsKeyPressed(ImGuiKey.Delete, false))
-            _pendingDelete = node;
+            _pendingDelete = [.. group];
         if (ImGui.Shortcut(ImGuiKey.Mod_Ctrl | ImGuiKey.X, ImGuiInputFlags.RouteGlobal))
-            Cut(node);
+            Cut(group);
         if (ImGui.Shortcut(ImGuiKey.Mod_Ctrl | ImGuiKey.D, ImGuiInputFlags.RouteGlobal))
-            Duplicate(node);
+            Duplicate(group);
     }
 
     /// <summary>Pour les menus et les scripts : agit sur la sélection.</summary>
     public void CopySelection()
     {
         if (session.Selection is { } n)
-            Copy(n);
+            Copy(Group(n));
     }
 
     public void CutSelection()
     {
         if (session.Selection is { Parent.HasEditableChildren: true } n)
-            Cut(n);
+            Cut(Group(n));
     }
 
     public void PasteHere() => Paste(session.Selection);
@@ -378,6 +405,17 @@ sealed class InspectorPanel(EditorSession session, PropertyEditor editor, Action
                     ImGui.PopStyleColor();
                 }
                 InstanceHeader(node);
+                var selected = session.SelectedNodes;
+                bool sameType = selected.Count > 1 && selected.All(n => n.GetType() == node.GetType());
+                editor.Group = sameType ? selected : [node];
+                if (selected.Count > 1)
+                {
+                    ImGui.PushStyleColor(ImGuiCol.Text, EditorTheme.Accent);
+                    ImGui.TextWrapped(sameType
+                        ? $"{selected.Count} nœuds sélectionnés : une valeur modifiée ici s'applique aux {selected.Count}."
+                        : $"{selected.Count} nœuds de types différents : seul « {node.Name} » est affiché.");
+                    ImGui.PopStyleColor();
+                }
                 ImGui.Spacing();
                 editor.Draw(node);
                 Extensions?.Invoke(node);

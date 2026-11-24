@@ -52,6 +52,7 @@ public sealed class FleetNode : Node
     public int Scale { get; set; } = 1;
 
     [Range(0.5f, 10, 0.05f)]
+    [ScaleHandle]
     [Description("Espacement entre coques, en rayons de coque.")]
     public float Spacing { get; set; } = 3;
 
@@ -135,6 +136,7 @@ public sealed class BodyNode : Node
     public float3 Position { get; set; }
 
     [Range(100, 2_000_000, 100)]
+    [ScaleHandle]
     [Description("Rayon (m).")]
     public float Radius { get; set; } = 20_000;
 

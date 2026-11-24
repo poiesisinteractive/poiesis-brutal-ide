@@ -85,7 +85,13 @@ public sealed class WorldView
     }
 
     /// <summary>Les entités dessinables du monde ; <paramref name="highlight"/> éclaircit celles qu'il désigne (sélection).</summary>
-    public void DrawEntities(World world, Func<Entity, bool>? highlight = null)
+    public void DrawEntities(World world, Func<Entity, bool>? highlight = null) => DrawEntities(world, highlight, null);
+
+    /// <summary>
+    /// Les entités dessinables du monde. Avec <paramref name="only"/>, seules celles pour lesquelles il rend une couleur
+    /// sont dessinées, de cette couleur (fantômes d'une proposition, nœuds à supprimer).
+    /// </summary>
+    public void DrawEntities(World world, Func<Entity, bool>? highlight, Func<Entity, float4?>? only)
     {
         var eye = EyePosition();
         var transforms = world.Store<Transform>();
@@ -100,6 +106,12 @@ public sealed class WorldView
             ref readonly var r = ref items[i];
             var t = transforms.Get(entities[i]);
             var color = r.Color;
+            if (only is not null)
+            {
+                if (only(world.EntityAt(entities[i])) is not { } forced)
+                    continue;
+                color = forced;
+            }
             if (highlight is not null && highlight(world.EntityAt(entities[i])))
                 color = new float4(MathF.Min(color.X * 1.3f + 0.15f, 1), MathF.Min(color.Y * 1.3f + 0.10f, 1), MathF.Min(color.Z * 0.6f + 0.35f, 1), 1);
 
