@@ -62,4 +62,30 @@ public class ToolingTests
         Assert.Equal("--line {line} {file}", editor.GotoArgs);
         Assert.Equal("{folder}", editor.OpenArgs);
     }
+
+    [Fact]
+    public void The_game_assembly_is_stale_when_missing_or_older_than_a_source_file()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "poiesis-stale-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(Path.Combine(root, "src", "bin"));
+        File.WriteAllText(Path.Combine(root, "poiesis.project.json"), """{ "name": "T", "gameProject": "src/a.csproj", "gameAssembly": "src/bin/a.dll" }""");
+        var project = ProjectConfig.Load(root);
+        var t0 = DateTime.UtcNow.AddHours(-1);
+        void Write(string rel, DateTime at)
+        {
+            var path = Path.Combine(root, rel);
+            File.WriteAllText(path, "");
+            File.SetLastWriteTimeUtc(path, at);
+        }
+        Write("src/a.csproj", t0);
+        Write("src/Nodes.cs", t0);
+        Assert.True(project.IsGameAssemblyStale());   // pas de DLL
+
+        Write("src/bin/a.dll", t0.AddMinutes(1));
+        Write("src/bin/later.cs", t0.AddMinutes(5));   // bin/ ne compte pas
+        Assert.False(project.IsGameAssemblyStale());
+
+        Write("src/Nodes.cs", t0.AddMinutes(2));        // source modifiée après le build (un pull)
+        Assert.True(project.IsGameAssemblyStale());
+    }
 }

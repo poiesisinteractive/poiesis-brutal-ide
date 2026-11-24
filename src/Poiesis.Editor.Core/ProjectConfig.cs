@@ -31,6 +31,30 @@ public sealed record ProjectConfig
 
     public string Abs(string relative) => Path.GetFullPath(Path.Combine(Root, relative));
 
+    /// <summary>
+    /// Vrai si la DLL du jeu manque ou est plus ancienne qu'un fichier source du projet du jeu
+    /// (<c>.cs</c>, <c>.csproj</c>, <c>.props</c>, hors <c>bin</c> et <c>obj</c>) : par exemple après un pull.
+    /// </summary>
+    public bool IsGameAssemblyStale()
+    {
+        var dll = new FileInfo(Abs(GameAssembly));
+        if (!dll.Exists)
+            return true;
+        var dir = Path.GetDirectoryName(Abs(GameProject))!;
+        foreach (var file in Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories))
+        {
+            var ext = Path.GetExtension(file);
+            if (ext is not (".cs" or ".csproj" or ".props" or ".targets"))
+                continue;
+            var rel = Path.GetRelativePath(dir, file).Replace('\\', '/');
+            if (rel.StartsWith("bin/", StringComparison.Ordinal) || rel.StartsWith("obj/", StringComparison.Ordinal))
+                continue;
+            if (File.GetLastWriteTimeUtc(file) > dll.LastWriteTimeUtc)
+                return true;
+        }
+        return false;
+    }
+
     public static ProjectConfig Load(string root)
     {
         root = Path.GetFullPath(root);

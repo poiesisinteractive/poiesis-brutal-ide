@@ -71,25 +71,58 @@ sealed class EditorApp : IDisposable
         _script = new Queue<string>(options.Script);
 
         _log.Info("éditeur", $"Projet {_project.Name} · GPU {vk.DeviceName}");
-        LoadModuleOrBuild();
         var scene = options.ScenePath ?? (_project.StartScene is { } s ? _project.Abs(s) : null);
         if (scene is not null && File.Exists(scene))
-            Try(() => _session.OpenScene(scene), "Ouverture de la scène");
+            _pendingScene = scene;
+        LoadModuleOrBuild();
+    }
+
+    /// <summary>Scène de départ, ouverte dès que le module du jeu est chargé (ses types de nœuds en viennent).</summary>
+    string? _pendingScene;
+
+    void OpenPendingScene()
+    {
+        if (_pendingScene is not { } scene || _session.Modules.Module is null)
+            return;
+        _pendingScene = null;
+        OpenScene(scene);
+    }
+
+    void OpenScene(string path)
+    {
+        try
+        {
+            _session.OpenScene(path);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            _log.Error("éditeur", $"Ouverture de la scène : {ex.Message}. La DLL du jeu est sans doute périmée : Ctrl+B la recompile et la recharge.");
+        }
+        catch (Exception ex)
+        {
+            _log.Error("éditeur", $"Ouverture de la scène : {ex.Message}");
+        }
     }
 
     public bool QuitRequested { get; private set; }
 
-    /// <summary>Charge la DLL du jeu si elle existe ; sinon la compile, et la chargera à la fin du build.</summary>
+    /// <summary>
+    /// Charge la DLL du jeu si elle est à jour ; sinon (absente, ou plus vieille que les sources, par exemple après un pull)
+    /// la compile d'abord, et la chargera à la fin du build.
+    /// </summary>
     void LoadModuleOrBuild()
     {
         var dll = _project.Abs(_project.GameAssembly);
-        if (File.Exists(dll))
-            Try(() => _session.LoadGameModule(dll), "Chargement du module");
-        else
+        if (!_project.IsGameAssemblyStale())
         {
-            _reloadAfterBuild = true;
-            _build.Start();
+            Try(() => _session.LoadGameModule(dll), "Chargement du module");
+            OpenPendingScene();
+            return;
         }
+        if (File.Exists(dll))
+            _log.Info("éditeur", "La DLL du jeu est plus ancienne que ses sources : compilation avant chargement.");
+        _reloadAfterBuild = true;
+        _build.Start();
     }
 
     void ReloadModule()
@@ -109,6 +142,7 @@ sealed class EditorApp : IDisposable
             _leakCheckAt = DateTime.UtcNow.AddSeconds(3);
         }
         _properties.InvalidateContent();
+        OpenPendingScene();
     }
 
     DateTime? _leakCheckAt;
@@ -195,7 +229,7 @@ sealed class EditorApp : IDisposable
             {
                 foreach (var f in Directory.EnumerateFiles(_project.ContentRoot, "*.scene.json", SearchOption.AllDirectories).Order(StringComparer.Ordinal))
                     if (ImGui.MenuItem(Path.GetRelativePath(_project.ContentRoot, f)))
-                        Try(() => _session.OpenScene(f), "Ouverture de la scène");
+                        OpenScene(f);
                 ImGui.EndMenu();
             }
             if (ImGui.MenuItem("Enregistrer"u8, "Ctrl+S"u8, false, _session.ScenePath is not null))
