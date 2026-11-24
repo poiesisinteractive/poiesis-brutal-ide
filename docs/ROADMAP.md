@@ -163,6 +163,8 @@ Critère du J3 atteint : *le croiseur de la Coalition est conçu dans le concept
 | **IA qui écrit des outils d'éditeur** : l'API d'extension (résumé tenu à jour par un test) et les extensions existantes dans le contexte de l'agent, modèle de demande dans le panneau IA | ✅ vérifié de bout en bout avec un agent simulé : extension écrite, garde-fous passés, acceptée, rechargée |
 | API d'extension complétée : placement des panneaux, vignettes, aperçu 3D, réglages persistants, demande de rechargement | ✅ |
 
+![Une feature « outil d'éditeur » prête à relire : build et tests passent, le diff ajoute HullCounter.cs](images/ai-editor-tool.png)
+
 **Ce que le parcours de l'IA a montré** : au premier essai, les garde-fous ont refusé l'outil écrit par l'agent, parce qu'un test exigeait la liste exacte des extensions d'Orionum. Le test a été assoupli ; le second essai est passé du premier coup.
 
 **Effet sur la bataille** : poser les tourelles du croiseur sur sa nouvelle coque déplace ses bordées de 70 m à 53,5 m de l'axe. Sur 20 graines, rien ne change : la Coalition gagne toujours 100 % des batailles, en 414 s (415 avant), avec 6 survivants à 96 %. Le déséquilibre reste à traiter.
