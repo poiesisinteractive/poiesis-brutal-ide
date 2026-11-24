@@ -2,28 +2,48 @@
 
 Avec une équipe d'une ou deux personnes, chaque jalon est une **tranche verticale utilisable**, pas une couche complète. Un jalon est fini quand on peut faire la démo décrite dans son critère.
 
-## J0 : squelette ✅ (ce commit)
+## J0 : squelette ✅
 
-- Solution .NET 10 et paquets BRUTAL, compilée et testée (20 tests).
+- Solution .NET 10 et paquets BRUTAL, compilée et testée.
 - ECS déterministe, nœuds, sérialisation JSON, cuisson, pas fixe.
 - Module de jeu rechargé à chaud, déchargement vérifié par test.
 - Modèle de l'éditeur : document, sélection, annuler/rétablir, Play/Pause/Stop, hot reload qui garde la scène.
 - IA : conversation neutre, Anthropic (SDK officiel), client compatible OpenAI (OpenAI, Gemini, Ollama, LM Studio), boucle d'agent, outils confinés au worktree, workflow feature (branche, garde-fous, diff, accepter ou refuser).
 - Orionum minimal : deux flottes JSON, approche et combat placeholder, runner headless.
 
-## J1 : la tranche verticale de l'éditeur
+## J1 : la tranche verticale de l'éditeur ✅
 
 Critère : *on ouvre Orionum dans l'IDE, on déplace une flotte dans le viewport, on change le nombre de croiseurs dans l'inspecteur, on appuie sur Play et on voit la bataille ; on demande à l'IA « les croiseurs des Clans tirent 20 % plus loin », on relit le diff, on accepte, le jeu se recharge à chaud sans fermer l'éditeur.*
 
-1. **Vulkan** : instance, device, swapchain, cible hors écran du viewport, un pipeline de maillages instanciés (couleur unie et éclairage simple). Partir de `samples/Demo/DemoVulkan.cs` de BRUTAL.
-2. **ImGui** sur ses backends GLFW et Vulkan, avec le docking ; disposition par défaut sauvegardée.
-3. **Splash BRUTAL** et écran de crédits (obligations de licence).
-4. **Panneaux** : arbre de scène (ajouter, supprimer, renommer, glisser-déposer), inspecteur généré depuis les propriétés (float, int, enum, `float3`, chaîne, référence de catalogue), console de logs, barre Play/Pause/Stop et vitesse.
-5. **Viewport** : caméra orbitale, sélection au clic, gizmo de translation, aperçu des flottes en mode édition (cuisson à chaque modification).
-6. **Inspecteur d'entités en direct** pendant le Play : entités, composants, valeurs.
-7. **Build intégré** : `dotnet build` de la DLL du jeu depuis l'éditeur, erreurs cliquables, hot reload automatique à la fin du build.
-8. **Panneau IA** : choix du fournisseur, description de la feature, flux des actions de l'agent, état des garde-fous, diff coloré, boutons Accepter, Refuser, Ouvrir le worktree. Jetons consommés affichés.
-9. **Définitions de vaisseaux** : éditeur de `*.ship.json` dans l'inspecteur, rechargement des données sans recompiler.
+Démontré de bout en bout sous Xvfb, avec Vulkan logiciel, souris et clavier simulés par `xdotool` : sélection au clic, gizmo, Ctrl+Z, Ctrl+D, F5, Ctrl+B et rechargement. Pour l'IA, un serveur local compatible OpenAI jouait l'agent ; le reste était réel (worktree, build et tests du jeu dans le worktree, diff, fusion, recompilation, rechargement en génération 2).
+
+| # | Élément | État |
+| --- | --- | --- |
+| 1 | **Vulkan** : device, swapchain, viewport hors écran (une cible par image en vol), maillages instanciés éclairés, lignes | ✅ |
+| 2 | **ImGui** sur GLFW et Vulkan, docking, disposition par défaut sauvegardée par projet | ✅ |
+| 3 | **Splash BRUTAL** au démarrage, crédits dans « À propos », `NOTICE.txt` livré | ✅ |
+| 4 | **Panneaux** : arbre (ajouter, dupliquer, supprimer, glisser-déposer), inspecteur généré (float, int, bool, enum, `float3`, chaîne, référence de contenu), console, Play/Pause/Stop et vitesse dans la barre de menus | ✅ |
+| 5 | **Viewport** : caméra orbitale, sélection au clic, gizmo de translation sur trois axes, aperçu cuit en édition, taille apparente minimale (vue tactique) | ✅ |
+| 6 | **Entités en direct** : liste, composants et valeurs | ✅ |
+| 7 | **Build intégré** : Ctrl+B, diagnostics dans la console, rechargement à chaud à la fin | ✅ (les erreurs ne sont pas encore cliquables) |
+| 8 | **Panneau IA** : fournisseur, description, actions de l'agent, garde-fous, diff coloré, Accepter, Refuser, chemin du worktree, jetons | ✅ (vérifié avec un serveur simulé ; aucun appel réel à un fournisseur depuis le cloud, faute de clé) |
+| 9 | **Données** : édition des `*.ship.json`, enregistrement et rechargement du module | ✅ |
+
+Pas encore fait :
+- erreurs de build cliquables ;
+- « Enregistrer sous » ;
+- dialogues de fichiers natifs ;
+- fenêtres ImGui détachables (multi-viewports) ;
+- édition de l'arbre pendant une partie.
+
+## J1.5 : à vérifier sur Windows
+
+Le jalon 1 a été écrit et testé sous Linux, sans GPU. À confirmer sur un poste Windows avec un vrai GPU :
+
+- démarrage, police Segoe UI, redimensionnement de la fenêtre, glisser-déposer des onglets ;
+- fluidité du viewport sur la scène d'exemple, puis avec 500 coques par camp ;
+- un vrai tour d'IA avec chacun des fournisseurs (Anthropic, OpenAI, Gemini, Ollama ou LM Studio) ;
+- fusion d'une feature quand le dépôt a des modifications locales non commitées (la fusion git refuse alors de toucher les fichiers concernés ; le message doit être clair).
 
 ## J2 : Orionum réécrit, première partie
 

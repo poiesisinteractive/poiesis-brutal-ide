@@ -4,25 +4,60 @@ Un éditeur de jeux à la manière de Godot ou Unity, construit sur [BRUTAL](htt
 
 BRUTAL fournit l'interop, la mémoire, les maths, les jobs et les bindings natifs (Vulkan, GLFW, Dear ImGui, Jolt…), sans éditeur, ni scene graph, ni renderer. Ce dépôt ajoute ce qui manque : un moteur (nœuds et ECS, sim à pas fixe, rendu Vulkan) et son éditeur.
 
+![L'éditeur sur la scène « Ligne de bataille » d'Orionum](docs/images/editor.png)
+
 - Décisions : [docs/DECISIONS.md](docs/DECISIONS.md)
 - Architecture : [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - Jalons : [docs/ROADMAP.md](docs/ROADMAP.md)
 
 ## État
 
-Squelette (J0) : tout compile et 20 tests passent. Le moteur, le chargement à chaud, le modèle de l'éditeur et le workflow IA fonctionnent sans fenêtre. Restent au jalon 1 : le rendu Vulkan, l'interface ImGui et le branchement des panneaux. L'exécutable de l'éditeur ouvre pour l'instant une fenêtre vide.
+Jalon 1 terminé : l'éditeur tourne (Vulkan et Dear ImGui), et 21 tests passent. Sur la scène d'Orionum, on peut :
+
+- sélectionner et déplacer une flotte dans le viewport (gizmo), éditer ses propriétés dans l'inspecteur, annuler et rétablir ;
+- lancer la partie dans l'éditeur ;
+- modifier une définition de vaisseau ;
+- compiler et recharger le jeu à chaud ;
+- confier une fonctionnalité à l'IA, relire son diff et l'accepter.
+
+Le gameplay d'Orionum reste un placeholder (approche et dégâts continus) : sa réécriture est le jalon 2.
 
 ## Prérequis
 
-- [SDK .NET 10](https://dotnet.microsoft.com/download)
-- Windows x64 et un GPU Vulkan 1.3 (pilotes à jour). Les paquets `Ahwoo.Brutal.*` viennent de NuGet.
-- Git (le workflow IA crée des worktrees).
-- Pour l'IA, au choix : `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, ou un serveur local Ollama ou LM Studio.
+- [SDK .NET 10](https://dotnet.microsoft.com/download), et `dotnet` dans le `PATH` (l'éditeur compile le jeu avec).
+- Windows x64 et un GPU Vulkan 1.3 avec des pilotes à jour. Les paquets `Ahwoo.Brutal.*` viennent de NuGet.
+- Git : le workflow IA crée une branche et un worktree par fonctionnalité.
+- Pour l'IA, au choix : `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, ou un serveur local Ollama (port 11434) ou LM Studio (port 1234).
 
-## Commandes
+## Lancer l'éditeur
 
 ```sh
 dotnet build
+dotnet run --project src/Poiesis.Editor -- games/Orionum
+```
+
+Le dossier passé en argument est un projet de jeu : il contient un `poiesis.project.json`, qui indique le projet C# du gameplay, sa DLL, ses tests et la scène de départ. Au premier lancement, l'éditeur compile le jeu s'il ne trouve pas sa DLL.
+
+| Action | Commande |
+| --- | --- |
+| Tourner la caméra | glisser (clic gauche) dans le viewport |
+| Déplacer la caméra | glisser (clic droit), ou Maj + glisser (clic milieu) |
+| Zoomer | molette (de 20 m à 5 000 km) |
+| Sélectionner | clic sur un vaisseau, ou dans l'arbre de scène |
+| Déplacer la sélection | glisser une flèche du gizmo (X rouge, Y vert, Z bleu) |
+| Cadrer la sélection | F ou double-clic |
+| Annuler, rétablir | Ctrl+Z, Ctrl+Y |
+| Dupliquer, supprimer | Ctrl+D, Suppr (ou clic droit dans l'arbre) |
+| Jouer, arrêter | F5, Maj+F5 (ou les boutons de la barre de menus) |
+| Compiler et recharger le jeu | Ctrl+B |
+| Enregistrer la scène | Ctrl+S |
+| Capture d'écran | F12, dans `<projet>/.poiesis/captures/` |
+
+La disposition des panneaux est gardée dans `<projet>/.poiesis/imgui.ini` ; « Affichage > Disposition par défaut » la remet à zéro.
+
+## Autres commandes
+
+```sh
 dotnet test
 ```
 
@@ -33,12 +68,18 @@ dotnet build -c Release
 dotnet run --project src/Poiesis.Headless -c Release -- games/Orionum/src/Orionum.Game/bin/Release/net10.0/Orionum.Game.dll games/Orionum/content games/Orionum/content/scenarios/line-battle.scene.json 600
 ```
 
-Lancer l'éditeur sur Orionum :
+### Vérifier l'éditeur sans écran
+
+L'éditeur tourne aussi sans GPU, avec le Vulkan logiciel de Mesa (lavapipe), et sans écran, sous Xvfb. C'est ainsi qu'il est vérifié dans le cloud et qu'il pourra l'être en CI. `--capture` enregistre une image puis quitte. `--do` joue un petit script : `select:<nom>`, `frame`, `play`, `pause`, `advance:<secondes>`, `about`, `build`, `wait:<images>`, `focus:<panneau>`.
 
 ```sh
-dotnet run --project src/Poiesis.Editor -- games/Orionum games/Orionum/src/Orionum.Game/bin/Debug/net10.0/Orionum.Game.dll games/Orionum/content/scenarios/line-battle.scene.json
+sudo apt-get install -y xvfb mesa-vulkan-drivers libvulkan1
+```
+
+```sh
+xvfb-run -a -s "-screen 0 1600x900x24" dotnet src/Poiesis.Editor/bin/Debug/net10.0/Poiesis.Editor.dll games/Orionum --splash 0 --frames 40 --capture shot.png --do select:Clans
 ```
 
 ## Licence
 
-BRUTAL est distribué sous la [BRUTAL License v1.0](https://github.com/ahwootech/BRUTAL/blob/main/LICENSE.txt). L'éditeur et chaque jeu distribué qui l'utilise doivent créditer Ahwoo, afficher le logo BRUTAL au démarrage et livrer le `NOTICE.txt` de BRUTAL.
+BRUTAL est distribué sous la [BRUTAL License v1.0](https://github.com/ahwootech/BRUTAL/blob/main/LICENSE.txt). L'éditeur affiche le logo BRUTAL au démarrage, crédite Ahwoo dans « Aide > À propos » et livre le `NOTICE.txt` de BRUTAL à côté de son exécutable. Chaque jeu distribué devra faire de même.

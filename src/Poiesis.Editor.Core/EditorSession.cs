@@ -116,6 +116,7 @@ public sealed class EditorSession : IDisposable
     /// </summary>
     public bool HotReload(string assemblyPath)
     {
+        bool wasDirty = IsDirty;
         var (json, selectedId) = DetachScene();
 
         bool unloaded = Modules.Unload();
@@ -123,6 +124,8 @@ public sealed class EditorSession : IDisposable
         Modules.Load(assemblyPath);
         Scene = Serializer.Read(json);
         Selection = selectedId is { } id ? Scene.DescendantsAndSelf().FirstOrDefault(n => n.Id == id) : null;
+        if (!wasDirty)
+            _savedRevision = Revision;   // recharger le code ne modifie pas le document
         Log?.Invoke($"Rechargé à chaud : {Modules.Module!.Name} (génération {Modules.Generation})");
         return unloaded;
     }

@@ -114,7 +114,7 @@ sealed class ViewportPanel
         var (world, bake) = Source();
         if (world is not null)
         {
-            var selected = _session.Selection;
+            var selected = SelectedSubtree();
             var transforms = world.Store<Transform>();
             var renderables = world.Store<Renderable>();
             var entities = renderables.DenseEntities;
@@ -128,9 +128,9 @@ sealed class ViewportPanel
                 var t = transforms.Get(entities[i]);
                 var color = r.Color;
 
-                bool isSelected = selected is not null && bake is not null
+                bool isSelected = selected.Count > 0 && bake is not null
                     && bake.OwnerOf.TryGetValue(world.EntityAt(entities[i]), out var owner)
-                    && IsUnder(owner, selected);
+                    && selected.Contains(owner);
                 if (isSelected)
                     color = new float4(MathF.Min(color.X * 1.3f + 0.15f, 1), MathF.Min(color.Y * 1.3f + 0.10f, 1), MathF.Min(color.Z * 0.6f + 0.35f, 1), 1);
 
@@ -149,10 +149,16 @@ sealed class ViewportPanel
         return _frame;
     }
 
-    bool IsUnder(Guid ownerId, Node selected)
+    readonly HashSet<Guid> _selectedIds = new();
+
+    /// <summary>Le nœud sélectionné et ses descendants, calculé une fois par image (pas une fois par entité).</summary>
+    HashSet<Guid> SelectedSubtree()
     {
-        var owner = _session.FindNode(ownerId);
-        return owner is not null && selected.IsSelfOrAncestorOf(owner);
+        _selectedIds.Clear();
+        if (_session.Selection is { } node)
+            foreach (var n in node.DescendantsAndSelf())
+                _selectedIds.Add(n.Id);
+        return _selectedIds;
     }
 
     float3 EyePosition()
@@ -372,8 +378,9 @@ sealed class ViewportPanel
         }
         var points = new List<float3>();
         var transforms = world.Store<Transform>();
+        var selected = SelectedSubtree();
         foreach (var (entity, owner) in bake.OwnerOf)
-            if (world.IsAlive(entity) && transforms.Has(entity.Index) && IsUnder(owner, _session.Selection))
+            if (world.IsAlive(entity) && transforms.Has(entity.Index) && selected.Contains(owner))
                 points.Add(transforms.Get(entity.Index).Position);
         if (points.Count > 0)
             Frame(points);

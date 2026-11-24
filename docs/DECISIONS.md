@@ -54,6 +54,20 @@ Poiesis Brutal IDE est un éditeur de jeux à la manière de Godot ou Unity, con
 | Partie en cours au hot reload | **Arrêtée** au jalon 1 | Migrer l'état ECS entre deux versions des composants est un chantier en soi. |
 | Agent et moteur | L'agent **n'écrit pas** dans `src/Poiesis.*` ni dans `.git` | Le moteur évolue à la main ; l'agent signale ce qui manque. |
 
+## Choix faits pendant le jalon 1 (2026-11-24)
+
+| Sujet | Choix | Pourquoi |
+| --- | --- | --- |
+| Vérification | **Vulkan logiciel (lavapipe) sous Xvfb**, avec capture PNG et souris simulée | L'éditeur se lance et se teste dans le cloud et en CI, sans GPU ni écran. Ça ne remplace pas un essai sur Windows avec un vrai GPU (voir ROADMAP, J1.5). |
+| Passe de rendu | `VkRenderPass` classique pour la fenêtre, rendu dynamique pour le viewport | Le backend Vulkan d'ImGui fourni par BRUTAL exige une render pass ; le viewport, lui, profite de Vulkan 1.3. |
+| Barre d'outils | **Dans la barre de menus**, au centre | Comme Godot : toujours visible, sans panneau à placer. |
+| Vue lointaine | **Taille apparente minimale** de 22 px par coque | À 130 km, un croiseur de 600 m fait moins d'un pixel. La vue devient tactique, comme les icônes du POC. |
+| Projet de jeu | **`poiesis.project.json`** à la racine du jeu | L'éditeur sait quoi compiler, quoi charger, quoi tester (garde-fous de l'IA) et quelle scène ouvrir. |
+| Données de jeu | **Édition générique des JSON** dans le panneau Données, puis rechargement du module | L'éditeur reste indépendant du jeu ; le module relit ses définitions au chargement. |
+| Références de contenu | Attributs **`[ContentRef]`** et **`[Range]`** sur les propriétés de nœud | L'inspecteur propose la liste des classes de vaisseau et des bornes, sans code d'éditeur propre au jeu. |
+| Échec de l'agent | **Le worktree et la branche sont supprimés** ; un titre déjà pris reçoit un suffixe | Constaté en test : une erreur du fournisseur laissait une branche orpheline qui bloquait la relance. |
+| Requêtes HTTP | **Corps avec `Content-Length`**, pas de transfert par morceaux | Certains serveurs locaux compatibles OpenAI ne lisent pas les corps envoyés par morceaux. |
+
 ## Questions encore ouvertes
 
 1. **Audio** : FMOD (bindings BRUTAL, mais licence FMOD à payer et bibliothèques natives non fournies) ou SDL_mixer (choix du POC, gratuit, plus limité) ?

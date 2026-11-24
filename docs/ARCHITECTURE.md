@@ -53,11 +53,12 @@ Au rechargement, `EditorSession.HotReload` :
 2. décharge l'ancien module et vérifie par `WeakReference` qu'il a bien été collecté ;
 3. charge le nouveau, relit la scène avec les nouveaux types et restaure la sélection par `Id`.
 
-Trois pièges, tous rencontrés et couverts par `Hot_reload_keeps_the_edited_scene_and_unloads_the_old_assembly` :
+Quatre pièges, tous rencontrés ; les trois premiers sont couverts par `Hot_reload_keeps_the_edited_scene_and_unloads_the_old_assembly` :
 
 - **System.Text.Json** garde les types qu'il sérialise par réflexion dans des caches statiques. Les valeurs des scènes et des données du jeu passent donc par `ValueCodec`, qui ne garde rien.
 - **Les temporaires du JIT** : en Debug, et en Tier 0 même en Release, un cadre de pile garde ses temporaires vivants jusqu'à la fin de la méthode. Le code qui touche des objets du jeu est isolé dans des méthodes `NoInlining`, séparées de la boucle de GC.
 - **Une `WeakReference` vers l'objet `Assembly`** suffit à le retenir. On observe l'`AssemblyLoadContext`, pas l'assembly.
+- **Le déchargement prend du temps** : finaliseur du `LoaderAllocator`, puis ses poignées, sur plusieurs cycles de GC, d'autant plus que le tas est gros. Dans l'éditeur, dix passes ne suffisaient pas, et l'analyse du tas (`dotnet-dump`, `gcroot`) a montré qu'aucune racine ne retenait l'ancien contexte. `GameModuleHost` fait jusqu'à 40 passes, et l'éditeur revérifie trois secondes après chaque rechargement avant de signaler une fuite.
 
 Règles pour le code du jeu, écrit à la main ou par l'IA : pas d'événement statique sur un type du moteur, pas de thread qui survit à `Unload`, pas de cache global.
 
@@ -86,6 +87,23 @@ Règles pour le code du jeu, écrit à la main ou par l'IA : pas d'événement s
 - **`AgentLoop`** vérifie la raison d'arrêt avant d'exécuter un outil : une réponse tronquée ou déclinée n'exécute rien. Tous les résultats d'un tour repartent dans un seul message.
 - **Fournisseurs** : `AnthropicProvider` (SDK officiel `Anthropic`, endpoint beta pour le repli côté serveur) et `OpenAiCompatibleProvider` (OpenAI, Gemini, Ollama, LM Studio). Les réglages par défaut sont dans `ProviderSettings.Defaults`.
 
+## Rendu (Poiesis.Render)
+
+- **`VulkanContext`** : instance, surface, device (GPU dédié de préférence, sinon intégré, sinon logiciel), file unique dessin et présentation, allocateur VMA, envois ponctuels (`Immediate`).
+- **`Swapchain`** : deux images en vol. La `VkRenderPass` est classique, parce que le backend Vulkan d'ImGui en veut une. La swapchain est reconstruite au redimensionnement. Elle peut aussi capturer en PNG l'image présentée (`--capture`, F12).
+- **`SceneRenderer`** : le viewport 3D, en rendu dynamique Vulkan 1.3, dans une cible couleur et profondeur hors écran. Il y a une cible par image en vol, pour ne jamais réécrire une texture qu'ImGui lit encore. Un pipeline dessine les maillages instanciés éclairés : un appel par maillage, toutes ses instances d'un coup. Un autre dessine les lignes (grille, gizmos). Viewport et scissor sont dynamiques, donc un redimensionnement ne recrée aucun pipeline. Les shaders GLSL sont compilés au démarrage par ShaderC.
+- **`RenderFrame`** : ce qu'on demande pour une image (caméra, instances groupées par maillage, lignes). Le jeu et l'éditeur remplissent, le rendu dessine.
+- **Conventions** : matrices de Brutal.Numerics en lignes (comme System.Numerics), lues telles quelles en colonnes par GLSL (`M * v` côté shader équivaut à `v * M` côté C#). Viewport de hauteur négative pour garder y vers le haut.
+- **Composant `Renderable`** (moteur) : forme de base (boîte, sphère, deux coques procédurales), dimensions en mètres, couleur. L'éditeur dessine n'importe quel jeu sans le connaître ; les vrais modèles viennent au jalon 3.
+
+## Interface de l'éditeur (Poiesis.Editor)
+
+- **`ImGuiHost`** : Dear ImGui (branche docking de BRUTAL) sur ses backends GLFW et Vulkan, police système par FreeType, thème, disposition sauvegardée dans le projet.
+- **`EditorApp`** : barre de menus (avec Play, Pause, Arrêter, vitesse et Compiler au centre, comme Godot), raccourcis globaux, disposition par défaut (DockBuilder), splash BRUTAL, compilation puis rechargement, script `--do`.
+- **Panneaux** : `ViewportPanel`, `ScenePanel`, `InspectorPanel` (inspecteur générique `PropertyEditor`), `ConsolePanel`, `EntitiesPanel`, `DataPanel`, `AiPanel`. Chacun lit et modifie l'`EditorSession`, sans état métier propre.
+- **Modifications** : toute modification validée est une commande annulable. Pendant un glissement (inspecteur ou gizmo), la valeur est appliquée en direct, puis devient une seule commande au relâchement.
+- **Aperçu** : en édition, la scène est recuite dans un monde neuf à chaque révision du document. On voit donc exactement ce que donnera le Play. En jeu, le viewport montre le monde de la partie. La correspondance entité → nœud (`BakeContext.OwnerOf`) sert à la sélection au clic.
+
 ## Arborescence
 
 ```text
@@ -93,12 +111,13 @@ src/
   Poiesis.Engine.Core/     ECS, systèmes, pas fixe
   Poiesis.Engine.Scene/    nœuds, sérialisation, contrat IGameModule
   Poiesis.Engine.Hosting/  chargement à chaud, session de jeu
-  Poiesis.Render/          contrat de rendu (backend Vulkan : jalon 1)
+  Poiesis.Render/          rendu Vulkan 1.3 (contexte, swapchain, viewport, maillages)
   Poiesis.AI/              fournisseurs, agent, workflow feature
-  Poiesis.Editor.Core/     modèle de l'éditeur
-  Poiesis.Editor/          exécutable de l'IDE
+  Poiesis.Editor.Core/     modèle de l'éditeur (session, commandes, build, projet, journal)
+  Poiesis.Editor/          exécutable de l'IDE (ImGui, panneaux, splash)
   Poiesis.Headless/        runner sans fenêtre
 games/Orionum/
+  poiesis.project.json     description du projet pour l'éditeur
   src/Orionum.Game/        gameplay (DLL rechargée à chaud)
   content/                 scènes et définitions JSON
   tests/                   tests de bout en bout (chargement, cuisson, bataille, hot reload)

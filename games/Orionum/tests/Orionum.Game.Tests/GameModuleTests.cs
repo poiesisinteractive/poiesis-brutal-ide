@@ -71,6 +71,11 @@ public class GameModuleTests
         Assert.Equal(2, editor.Modules.Generation);
         Assert.Equal("Coalition (modifiée)", editor.Scene.Children[0].Name);
         Assert.Equal(fleetId, editor.Selection?.Id);
+        Assert.True(editor.IsDirty, "le renommage non enregistré reste à enregistrer");
+
+        editor.SaveScene(Path.Combine(Path.GetTempPath(), $"poiesis-{Guid.NewGuid():N}.scene.json"));
+        editor.HotReload(GameDll());
+        Assert.False(editor.IsDirty, "recharger le code ne modifie pas le document");
 
         // La nouvelle génération du module joue : 0,25 s à 20 Hz = 5 pas.
         editor.StartPlay();

@@ -237,6 +237,7 @@ sealed class AiPanel(EditorSession session, ProjectConfig project, LogBuffer log
             ToolInvoked t => new Line(EditorTheme.Coalition, $"→ {t.Name} {Shorten(t.Arguments)}"),
             ToolFinished { Outcome.IsError: true } t => new Line(EditorTheme.Error, $"  ✗ {t.Name} : {Shorten(t.Outcome.Content, 400)}"),
             ToolFinished t => new Line(EditorTheme.Muted, $"  ✓ {t.Name}"),
+            AgentStopped { Reason: StopReason.EndTurn } => new Line(EditorTheme.Muted, "Agent terminé ; vérifications en cours…"),
             AgentStopped s => new Line(EditorTheme.Warning, s.Detail ?? $"Arrêt : {s.Reason}"),
             _ => new Line(EditorTheme.Muted, e.ToString()),
         };
@@ -287,6 +288,7 @@ sealed class AiPanel(EditorSession session, ProjectConfig project, LogBuffer log
             }
             _state = State.Idle;
             _proposal = null;
+            _activity.Clear();
             _title = "";
             _description.SetValue(ReadOnlySpan<char>.Empty);
         }
