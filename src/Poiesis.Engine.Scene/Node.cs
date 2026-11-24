@@ -42,6 +42,15 @@ public abstract class Node
             child.Parent = null;
     }
 
+    /// <summary>Vrai si ce nœud est <paramref name="node"/> ou l'un de ses ancêtres.</summary>
+    public bool IsSelfOrAncestorOf(Node node)
+    {
+        for (var n = node; n is not null; n = n.Parent)
+            if (n == this)
+                return true;
+        return false;
+    }
+
     public IEnumerable<Node> DescendantsAndSelf()
     {
         yield return this;
@@ -63,6 +72,26 @@ public sealed class NodeTypeAttribute(string typeName) : Attribute
     public string TypeName { get; } = typeName;
 }
 
+/// <summary>
+/// La propriété (une chaîne) désigne un fichier de contenu par son champ <c>id</c> : l'inspecteur propose
+/// la liste des fichiers <paramref name="pattern"/> du dossier <paramref name="folder"/> (relatif à <c>content/</c>).
+/// </summary>
+[AttributeUsage(AttributeTargets.Property)]
+public sealed class ContentRefAttribute(string folder, string pattern) : Attribute
+{
+    public string Folder { get; } = folder;
+    public string Pattern { get; } = pattern;
+}
+
+/// <summary>Bornes et pas de glissement d'une propriété numérique dans l'inspecteur.</summary>
+[AttributeUsage(AttributeTargets.Property)]
+public sealed class RangeAttribute(float min, float max, float speed = 1) : Attribute
+{
+    public float Min { get; } = min;
+    public float Max { get; } = max;
+    public float Speed { get; } = speed;
+}
+
 /// <summary>Racine d'un fichier de scène.</summary>
 [NodeType("scene")]
 public sealed class SceneRoot : Node
@@ -73,16 +102,21 @@ public sealed class SceneRoot : Node
 public sealed class BakeContext(World world)
 {
     readonly Dictionary<Guid, Entity> _entities = new();
+    readonly Dictionary<Entity, Guid> _owners = new();
 
     public World World { get; } = world;
 
-    /// <summary>Entité créée pour un nœud, pour résoudre les références entre nœuds après la cuisson.</summary>
+    /// <summary>Première entité créée pour un nœud, pour résoudre les références entre nœuds après la cuisson.</summary>
     public IReadOnlyDictionary<Guid, Entity> EntitiesByNode => _entities;
+
+    /// <summary>Le nœud qui a créé chaque entité : sélection au clic dans le viewport.</summary>
+    public IReadOnlyDictionary<Entity, Guid> OwnerOf => _owners;
 
     public Entity CreateEntity(Node owner)
     {
         var e = World.Create();
         _entities.TryAdd(owner.Id, e);
+        _owners[e] = owner.Id;
         return e;
     }
 }

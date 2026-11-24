@@ -5,9 +5,15 @@ public interface IComponentStore
 {
     Type ComponentType { get; }
     int Count { get; }
+
+    /// <summary>Index des entités qui ont ce composant, dans l'ordre d'itération.</summary>
+    ReadOnlySpan<int> DenseEntities { get; }
     bool Has(int entityIndex);
     void Remove(int entityIndex);
     IComponentStore Clone();
+
+    /// <summary>Copie boxée du composant d'une entité, pour l'inspecteur en direct (lent : jamais dans la sim).</summary>
+    object GetBoxed(int entityIndex);
 }
 
 /// <summary>
@@ -102,6 +108,8 @@ public sealed class ComponentStore<T> : IComponentStore
         }
         _items[Count] = default;
     }
+
+    public object GetBoxed(int entityIndex) => Get(entityIndex);
 
     public IComponentStore Clone()
     {

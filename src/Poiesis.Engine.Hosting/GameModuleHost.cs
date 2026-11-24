@@ -62,12 +62,31 @@ public sealed class GameModuleHost(NodeTypeRegistry nodeTypes, string contentRoo
 
         // Cette méthode ne doit toucher aucun objet du jeu : le code non optimisé (Debug, ou Tier 0 du JIT)
         // garde les temporaires d'un cadre vivants jusqu'à sa fin, ce qui empêcherait la collecte.
-        for (int i = 0; _lastContext!.IsAlive && i < 10; i++)
+        // Le déchargement se fait en plusieurs temps (finaliseur du LoaderAllocator, puis ses poignées) :
+        // il faut plusieurs cycles de GC, d'autant plus que le tas est gros.
+        for (int i = 0; _lastContext!.IsAlive && i < 40; i++)
         {
-            GC.Collect();
+            GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, blocking: true);
             GC.WaitForPendingFinalizers();
         }
         return !_lastContext.IsAlive;
+    }
+
+    /// <summary>
+    /// Vrai si l'assembly de la génération précédente est encore en mémoire. À vérifier un peu après
+    /// <see cref="Unload"/> : une référence oubliée par l'éditeur ou par le jeu l'empêche de partir.
+    /// </summary>
+    public bool PreviousGenerationAlive
+    {
+        get
+        {
+            if (_lastContext is not { IsAlive: true })
+                return false;
+            GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, blocking: true);
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
+            return _lastContext.IsAlive;
+        }
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]

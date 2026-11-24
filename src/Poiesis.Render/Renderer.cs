@@ -5,20 +5,38 @@ namespace Poiesis.Render;
 /// <summary>Maillage chargé côté GPU, désigné par un handle opaque.</summary>
 public readonly record struct MeshHandle(int Value);
 
-/// <summary>Une instance à dessiner : un maillage, une transformation, une couleur (teinte de faction, émissif).</summary>
+/// <summary>Une instance à dessiner : une transformation et une couleur (teinte de faction, surbrillance).</summary>
 public struct MeshInstance
 {
     public float4x4 World;
     public float4 Color;
 }
 
+/// <summary>Un segment coloré (grille, axes, gizmos, lignes de ciblage).</summary>
+public struct LineVertex
+{
+    public float3 Position;
+    public float4 Color;
+
+    public LineVertex(float3 position, float4 color)
+    {
+        Position = position;
+        Color = color;
+    }
+}
+
 public struct Camera
 {
     public float3 Position;
-    public floatQuat Rotation;
+    public float3 Target;
     public float VerticalFovRadians;
     public float Near;
     public float Far;
+
+    public readonly float4x4 View => float4x4.CreateLookAt(Position, Target, new float3(0, 1, 0));
+
+    public readonly float4x4 Projection(float aspect) =>
+        float4x4.CreatePerspectiveFieldOfView(VerticalFovRadians, aspect, Near, Far);
 }
 
 /// <summary>
@@ -31,9 +49,14 @@ public sealed class RenderFrame
 
     public Camera Camera;
 
-    public float4 ClearColor = new(0.01f, 0.01f, 0.02f, 1f);
+    public float4 ClearColor = new(0.015f, 0.015f, 0.025f, 1f);
+
+    /// <summary>Direction de la lumière principale (vers la lumière), dans le monde.</summary>
+    public float3 LightDirection = float3.Normalize(new float3(0.4f, 0.8f, 0.3f));
 
     public IReadOnlyDictionary<MeshHandle, List<MeshInstance>> Batches => _batches;
+
+    public List<LineVertex> Lines { get; } = new();
 
     public void Draw(MeshHandle mesh, in MeshInstance instance)
     {
@@ -42,27 +65,16 @@ public sealed class RenderFrame
         list.Add(instance);
     }
 
+    public void Line(float3 a, float3 b, float4 color)
+    {
+        Lines.Add(new LineVertex(a, color));
+        Lines.Add(new LineVertex(b, color));
+    }
+
     public void Clear()
     {
         foreach (var list in _batches.Values)
             list.Clear();
+        Lines.Clear();
     }
-}
-
-/// <summary>
-/// Le rendu, vu de l'éditeur et du jeu. Une seule implémentation est prévue : Vulkan 1.3.
-/// Le viewport de l'éditeur rend dans une texture affichée par ImGui (<see cref="ViewportTexture"/>).
-/// </summary>
-public interface IRenderer : IDisposable
-{
-    MeshHandle UploadMesh(ReadOnlySpan<float3> positions, ReadOnlySpan<float3> normals, ReadOnlySpan<uint> indices);
-
-    /// <summary>Redimensionne la cible hors écran du viewport (pixels).</summary>
-    void ResizeViewport(int2 size);
-
-    /// <summary>Rend une image dans la cible du viewport.</summary>
-    void Render(RenderFrame frame);
-
-    /// <summary>Identifiant de texture à passer à <c>ImGui.Image</c> pour afficher le viewport.</summary>
-    nint ViewportTexture { get; }
 }

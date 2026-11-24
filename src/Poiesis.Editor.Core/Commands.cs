@@ -54,6 +54,18 @@ public sealed class RemoveNodeCommand(Node node) : IEditorCommand
     public void Undo() => _parent.AddChild(node);
 }
 
+/// <summary>Déplace un nœud sous un autre parent (glisser-déposer dans l'arbre).</summary>
+public sealed class ReparentCommand(Node node, Node newParent) : IEditorCommand
+{
+    readonly Node _oldParent = node.Parent ?? throw new InvalidOperationException("On ne déplace pas la racine");
+
+    public string Label => $"Déplacer {node.Name}";
+
+    public void Do() => newParent.AddChild(node);
+
+    public void Undo() => _oldParent.AddChild(node);
+}
+
 public sealed class UndoStack
 {
     readonly Stack<IEditorCommand> _undo = new();

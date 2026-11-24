@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- Rendu Vulkan 1.3 (BRUTAL : Vulkan, Vulkan.Abstractions, VMA, ShaderC). Jalon 1 : le contrat est posé,
-       le backend Vulkan s'écrit en premier (voir docs/ROADMAP.md). -->
+  <!-- Rendu Vulkan 1.3 (BRUTAL : Vulkan, Vulkan.Abstractions, VMA, ShaderC). Fonctionne aussi en logiciel
+       (Mesa lavapipe), ce qui permet de lancer l'éditeur sans GPU, sous Xvfb. -->
   <PropertyGroup>
     <RootNamespace>Poiesis.Render</RootNamespace>
   </PropertyGroup>
@@ -16,6 +16,9 @@
     <PackageReference Include="Ahwoo.Brutal.Vulkan.Vma" />
     <PackageReference Include="Ahwoo.Brutal.ShaderC" />
     <PackageReference Include="Ahwoo.Brutal.Glfw" />
+    <PackageReference Include="Ahwoo.Brutal.Memory" />
+    <PackageReference Include="Ahwoo.Brutal.Strings" />
+    <PackageReference Include="Ahwoo.Brutal.Stb" />
   </ItemGroup>
 
 </Project>

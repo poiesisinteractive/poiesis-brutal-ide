@@ -19,6 +19,7 @@
     <PackageVersion Include="Ahwoo.Brutal.ImGui.Extensions" Version="2026.10.3" />
     <PackageVersion Include="Ahwoo.Brutal.ImGui.FreeType" Version="2026.10.3" />
     <PackageVersion Include="Ahwoo.Brutal.NativeFileDialog" Version="2026.10.3" />
+    <PackageVersion Include="Ahwoo.Brutal.Stb" Version="2026.10.3" />
   </ItemGroup>
 
   <!-- IA. -->

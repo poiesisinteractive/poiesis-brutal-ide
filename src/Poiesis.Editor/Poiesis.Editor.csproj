@@ -19,7 +19,12 @@
     <PackageReference Include="Ahwoo.Brutal.ImGui.Backends" />
     <PackageReference Include="Ahwoo.Brutal.ImGui.Extensions" />
     <PackageReference Include="Ahwoo.Brutal.ImGui.FreeType" />
-    <PackageReference Include="Ahwoo.Brutal.NativeFileDialog" />
+  </ItemGroup>
+
+  <!-- Logo BRUTAL (splash, À propos) et NOTICE.txt : obligations de la BRUTAL License v1.0, sections 2.2 et 2.3. -->
+  <ItemGroup>
+    <None Include="Assets\**" CopyToOutputDirectory="PreserveNewest" LinkBase="Assets" />
+    <None Include="Assets\BRUTAL-NOTICE.txt" CopyToOutputDirectory="PreserveNewest" Link="NOTICE.txt" />
   </ItemGroup>
 
 </Project>

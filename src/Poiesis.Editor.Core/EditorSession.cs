@@ -1,3 +1,4 @@
+using Poiesis.Engine.Ecs;
 using Poiesis.Engine.Hosting;
 using Poiesis.Engine.Scene;
 
@@ -18,6 +19,66 @@ public sealed class EditorSession : IDisposable
         Serializer = new SceneSerializer(NodeTypes);
         Modules = new GameModuleHost(NodeTypes, Path.Combine(projectRoot, "content"));
         Scene = new SceneRoot { Name = "Nouvelle scène" };
+        History.Changed += Touch;
+    }
+
+    /// <summary>
+    /// Révision du document : augmente à chaque modification. L'aperçu, le titre (« modifié ») et les panneaux
+    /// s'en servent pour savoir quand se mettre à jour.
+    /// </summary>
+    public int Revision { get; private set; }
+
+    int _savedRevision;
+
+    public bool IsDirty => Revision != _savedRevision;
+
+    /// <summary>Signale une modification faite hors commande (glissement en cours dans l'inspecteur ou le viewport).</summary>
+    public void Touch() => Revision++;
+
+    /// <summary>Monde d'aperçu du mode édition : la scène cuite, sans sim. Reconstruit quand la révision change.</summary>
+    public World? Preview { get; private set; }
+
+    public BakeContext? PreviewBake { get; private set; }
+
+    /// <summary>Erreur de la dernière cuisson d'aperçu (ex. classe de vaisseau inconnue), affichée dans le viewport.</summary>
+    public string? PreviewError { get; private set; }
+
+    int _previewRevision = -1;
+    int _previewGeneration = -1;
+
+    public void UpdatePreview()
+    {
+        var module = Modules.Module;
+        if (module is null || (_previewRevision == Revision && _previewGeneration == Modules.Generation))
+            return;
+        _previewRevision = Revision;
+        _previewGeneration = Modules.Generation;
+        try
+        {
+            var world = new World();
+            module.InitializeWorld(world);
+            PreviewBake = SceneBaker.Bake(Scene, world);
+            Preview = world;
+            PreviewError = null;
+        }
+        catch (Exception ex)
+        {
+            Preview = null;
+            PreviewBake = null;
+            PreviewError = ex.Message;
+        }
+    }
+
+    public Node? FindNode(Guid id) => Scene.DescendantsAndSelf().FirstOrDefault(n => n.Id == id);
+
+    /// <summary>Copie profonde d'un nœud et de ses enfants, avec de nouveaux identifiants.</summary>
+    public Node CloneNode(Node node)
+    {
+        var copy = Serializer.Read(Serializer.Write(node));
+        foreach (var n in copy.DescendantsAndSelf())
+            n.Id = Guid.NewGuid();
+        copy.Name = node.Name + " (copie)";
+        return copy;
     }
 
     public string ProjectRoot { get; }
@@ -58,8 +119,6 @@ public sealed class EditorSession : IDisposable
         var (json, selectedId) = DetachScene();
 
         bool unloaded = Modules.Unload();
-        if (!unloaded)
-            Log?.Invoke("Attention : l'ancienne assembly du jeu est encore retenue en mémoire (fuite de références).");
 
         Modules.Load(assemblyPath);
         Scene = Serializer.Read(json);
@@ -82,6 +141,8 @@ public sealed class EditorSession : IDisposable
         Selection = null;
         History.Clear();   // les commandes retiennent des nœuds et des PropertyInfo
         Play = null;
+        Preview = null;
+        PreviewBake = null;
         return result;
     }
 
@@ -91,14 +152,16 @@ public sealed class EditorSession : IDisposable
         ScenePath = null;
         Selection = null;
         History.Clear();
+        _savedRevision = Revision;
     }
 
     public void OpenScene(string path)
     {
         Scene = Serializer.Read(File.ReadAllText(path));
-        ScenePath = path;
+        ScenePath = Path.GetFullPath(path);
         Selection = null;
         History.Clear();
+        _savedRevision = Revision;
     }
 
     public void SaveScene(string? path = null)
@@ -106,7 +169,8 @@ public sealed class EditorSession : IDisposable
         path ??= ScenePath ?? throw new InvalidOperationException("Pas de chemin pour la scène");
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
         File.WriteAllText(path, Serializer.Write(Scene) + "\n");
-        ScenePath = path;
+        ScenePath = Path.GetFullPath(path);
+        _savedRevision = Revision;
     }
 
     /// <summary>Play : la scène est cuite dans un monde neuf. Elle-même n'est jamais modifiée par la partie.</summary>

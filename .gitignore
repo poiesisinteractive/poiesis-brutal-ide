@@ -4,5 +4,5 @@ obj/
 .idea/
 *.user
 TestResults/
-.poiesis/worktrees/
+.poiesis/
 *.log
