@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Poiesis.AI\Poiesis.AI.csproj" />
+    <ProjectReference Include="..\..\src\Poiesis.Editor.Core\Poiesis.Editor.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>

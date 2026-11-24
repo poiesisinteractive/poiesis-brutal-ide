@@ -172,7 +172,7 @@ sealed class InspectorPanel(EditorSession session, PropertyEditor editor)
 }
 
 /// <summary>Le journal de l'éditeur : build, hot reload, agent IA. Filtrable par niveau.</summary>
-sealed class ConsolePanel(LogBuffer log)
+sealed class ConsolePanel(LogBuffer log, CodeEditor code)
 {
     bool _showInfo = true, _showWarnings = true, _showErrors = true;
     int _lastVersion = -1;
@@ -208,6 +208,20 @@ sealed class ConsolePanel(LogBuffer log)
                     ImGui.PushStyleColor(ImGuiCol.Text, color);
                     ImGui.Text(e.Text);
                     ImGui.PopStyleColor();
+                    // Diagnostic ou test en échec : un clic ouvre l'emplacement dans l'éditeur de code.
+                    if (e.Location is { } loc)
+                    {
+                        if (ImGui.IsItemHovered())
+                        {
+                            var min = ImGui.GetItemRectMin();
+                            var max = ImGui.GetItemRectMax();
+                            ImGui.GetWindowDrawList().AddLine(new float2(min.X, max.Y), max, Widgets.Col(color));
+                            ImGui.SetMouseCursor(ImGuiMouseCursor.Hand);
+                            ImGui.SetItemTooltip($"Ouvrir {Path.GetFileName(loc.File)}:{loc.Line} dans {code.Command}");
+                        }
+                        if (ImGui.IsItemClicked())
+                            code.Open(loc);
+                    }
                 }
                 // Défilement automatique quand une ligne arrive et qu'on est déjà en bas.
                 if (_lastVersion != log.Version && ImGui.GetScrollY() >= ImGui.GetScrollMaxY() - 20)

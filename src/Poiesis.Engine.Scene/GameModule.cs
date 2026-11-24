@@ -46,3 +46,15 @@ public interface IWorldVisualizer
 
     void Draw(World world, Poiesis.Engine.Debug.DrawContext ctx);
 }
+
+/// <summary>Le bilan d'une partie à un instant : est-elle finie, qui gagne, et des mesures nommées (pertes, tirs…).</summary>
+public sealed record GameReport(bool Finished, string? Winner, double Time, IReadOnlyDictionary<string, double> Metrics);
+
+/// <summary>
+/// Facultatif, implémenté par le module de jeu : le bilan d'une partie. Sert aux séries de parties (équilibrage),
+/// au runner headless et à l'analyse par l'IA.
+/// </summary>
+public interface IGameReporter
+{
+    GameReport Report(World world);
+}

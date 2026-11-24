@@ -12,7 +12,12 @@ BRUTAL fournit l'interop, la mémoire, les maths, les jobs et les bindings natif
 
 ## État
 
-Jalon 2a terminé, 31 tests passent.
+Jalon 2b terminé, 39 tests passent. On peut :
+- exporter le jeu pour Windows ou Linux, autonome, avec splash et crédits BRUTAL ;
+- ouvrir les erreurs de build et les tests en échec dans VS Code ;
+- jouer des séries de batailles et les faire analyser par l'IA.
+
+Le reste ci-dessous date du jalon 2a.
 
 **Orionum** a réécrit sa bataille des capitaux sur le moteur, à partir des données du POC :
 - dix classes de vaisseaux, en JSON éditable ;
@@ -66,6 +71,30 @@ Le dossier passé en argument est un projet de jeu : il contient un `poiesis.pro
 | Compiler et recharger le jeu | Ctrl+B |
 | Enregistrer la scène | Ctrl+S |
 | Capture d'écran | F12, dans `<projet>/.poiesis/captures/` |
+| Lancer les tests du jeu | Ctrl+T ; un clic sur un échec l'ouvre dans VS Code |
+| Ouvrir une erreur de build | clic sur la ligne dans la console |
+| Exporter le jeu | Jeu > Exporter le jeu > Windows x64 ou Linux x64 (dans `<projet>/builds/`) |
+| Analyser l'équilibrage | panneau Analyse : jouer une série, puis demander à l'IA |
+
+L'éditeur de code se règle dans `<projet>/.poiesis/settings.json` (VS Code par défaut) :
+
+```json
+{ "codeEditor": { "command": "code", "goto": "--goto {file}:{line}:{column}", "open": "{folder}" } }
+```
+
+## Jeu exporté
+
+L'export produit un dossier et une archive zip autonomes : le joueur Poiesis, au nom du jeu, avec son runtime .NET, la DLL du jeu, son contenu, `game.json`, le logo et le `NOTICE.txt` de BRUTAL. Rien d'autre à installer qu'un pilote Vulkan.
+
+| Action | Commande |
+| --- | --- |
+| Tourner, déplacer, zoomer | glisser, clic droit, molette |
+| Pause, vitesse | Espace, + et − |
+| Tout voir | Origine |
+| Crédits | F1 |
+| Quitter | Échap |
+
+![Le jeu exporté, avec les crédits BRUTAL (F1)](docs/images/exported-game.png)
 
 La disposition des panneaux est gardée dans `<projet>/.poiesis/imgui.ini` ; « Affichage > Disposition par défaut » la remet à zéro.
 
@@ -75,7 +104,13 @@ La disposition des panneaux est gardée dans `<projet>/.poiesis/imgui.ini` ; « 
 dotnet test
 ```
 
-Jouer une bataille sans fenêtre et obtenir son issue et le temps de chaque système (ici 500 contre 500, 180 s simulées) :
+Jouer une série de parties sans fenêtre et obtenir les victoires et les mesures du jeu :
+
+```sh
+dotnet run --project src/Poiesis.Headless -c Release -- games/Orionum/src/Orionum.Game/bin/Release/net10.0/Orionum.Game.dll games/Orionum/content games/Orionum/content/scenarios/capital-battle.scene.json --runs 20 --seed 1
+```
+
+Jouer une seule bataille et obtenir son bilan et le temps de chaque système (ici 500 contre 500, 180 s simulées) :
 
 ```sh
 dotnet build -c Release
@@ -84,7 +119,7 @@ dotnet run --project src/Poiesis.Headless -c Release -- games/Orionum/src/Orionu
 
 ### Vérifier l'éditeur sans écran
 
-L'éditeur tourne aussi sans GPU, avec le Vulkan logiciel de Mesa (lavapipe), et sans écran, sous Xvfb. C'est ainsi qu'il est vérifié dans le cloud et qu'il pourra l'être en CI. `--capture` enregistre une image puis quitte. `--do` joue un petit script : `select:<nom>`, `frame`, `play`, `pause`, `step:<n>`, `advance:<secondes>`, `snapshot`, `restore`, `entity:<slot ou nom de flotte>`, `channel:<canal>`, `about`, `build`, `wait:<images>`, `focus:<panneau>`.
+L'éditeur tourne aussi sans GPU, avec le Vulkan logiciel de Mesa (lavapipe), et sans écran, sous Xvfb. C'est ainsi qu'il est vérifié dans le cloud et qu'il pourra l'être en CI. `--capture` enregistre une image puis quitte. `--do` joue un petit script : `select:<nom>`, `frame`, `play`, `pause`, `step:<n>`, `advance:<secondes>`, `snapshot`, `restore`, `entity:<slot ou nom de flotte>`, `channel:<canal>`, `about`, `build`, `wait:<images>`, `focus:<panneau>`, `tests[:filtre]`, `open-first-location`, `export:<windows|linux>`, `series:<n>`, `provider:<nom>`, `ask:<question>`.
 
 ```sh
 sudo apt-get install -y xvfb mesa-vulkan-drivers libvulkan1

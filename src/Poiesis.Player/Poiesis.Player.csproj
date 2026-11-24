@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Le joueur : l'exécutable livré avec un jeu exporté. Pas d'éditeur, pas d'IA : il charge la DLL du jeu,
+       joue sa scène de départ, affiche le splash BRUTAL et les crédits. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Poiesis.Player</RootNamespace>
+    <ServerGarbageCollection>false</ServerGarbageCollection>
+    <TieredPGO>true</TieredPGO>
+    <!-- Sous Windows, pas de console derrière la fenêtre du jeu. -->
+    <OutputType Condition="'$(RuntimeIdentifier)' == 'win-x64'">WinExe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Poiesis.Runtime\Poiesis.Runtime.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Ahwoo.Brutal.Glfw" />
+    <PackageReference Include="Ahwoo.Brutal.ImGui" />
+  </ItemGroup>
+
+</Project>

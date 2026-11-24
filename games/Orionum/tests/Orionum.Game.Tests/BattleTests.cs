@@ -163,6 +163,40 @@ public class BattleTests
     }
 
     [Fact]
+    public void A_series_plays_each_seed_to_the_end_and_aggregates_the_game_report()
+    {
+        var (module, registry) = LoadModule();
+        var json = File.ReadAllText(GameModuleTests.Scene("capital-battle"));
+        var serializer = new SceneSerializer(registry);
+
+        var series = Series.Run("capital-battle", () => serializer.Read(json), module, firstSeed: 7, runs: 2, maxSeconds: 1200);
+
+        Assert.Equal([7, 8], series.Runs.Select(r => r.Seed));
+        Assert.All(series.Runs, r => Assert.True(r.Report.Finished));
+        Assert.Equal(1.0, series.WinRates.Values.Sum(), 6);
+        Assert.Contains(series.Stats, s => s.Name == "tourelles détruites" && s.Mean > 0);
+        Assert.Contains("Victoires", series.Summary());
+    }
+
+    [Fact]
+    public void The_seed_of_a_scene_is_found_by_convention_and_changes_the_battle()
+    {
+        var (module, registry) = LoadModule();
+        var json = File.ReadAllText(GameModuleTests.Scene("capital-battle"));
+        var serializer = new SceneSerializer(registry);
+        string Play(int seed)
+        {
+            var scene = serializer.Read(json);
+            Assert.True(Series.SetSeed(scene, seed));
+            var session = new PlaySession(scene, module);
+            session.Run(20 * 120);
+            return Fingerprint(session.World);
+        }
+        Assert.Equal(Play(3), Play(3));
+        Assert.NotEqual(Play(3), Play(4));
+    }
+
+    [Fact]
     public void Five_hundred_against_five_hundred_runs_within_the_real_time_budget()
     {
         var session = Start("great-battle");

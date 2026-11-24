@@ -95,6 +95,20 @@ Poiesis Brutal IDE est un éditeur de jeux à la manière de Godot ou Unity, con
 | Astres | **Décor** (sphères), sans gravité ni collision | Suffisant pour situer la bataille ; l'évitement viendra avec l'IA. |
 | Cap des flottes | Propriété **`Heading`** (degrés) et anneau de rotation générique | Tout nœud qui a `Position` et `Heading` profite du gizmo, sans code d'éditeur propre au jeu. |
 
+## Choix faits pendant le J2b (2026-11-24)
+
+| Sujet | Choix | Pourquoi |
+| --- | --- | --- |
+| Jeu exporté | **Un joueur générique** (`Poiesis.Player`) + la DLL du jeu + son contenu, décrits par `game.json` | Le même exécutable sert tous les jeux ; le jeu exporté charge son code comme l'éditeur, sans hot reload. |
+| Code partagé | **`Poiesis.Runtime`** : ce que l'éditeur et le joueur affichent de la même façon | Le joueur ne dépend pas de l'éditeur ; l'éditeur ajoute ses outils (gizmos, sélection) par-dessus la même `WorldView`. |
+| Plateformes d'export | **Windows x64** (cible) et **Linux x64** (pour vérifier ici) | La publication croisée depuis Linux fournit les bibliothèques natives Windows de BRUTAL ; l'export Linux permet de lancer le jeu exporté dans le conteneur. |
+| Nom de l'exécutable | **Exécutable renommé** après publication | Passer `AssemblyName` à `dotnet publish` renomme aussi les projets référencés (« Ambiguous project name »). |
+| Éditeur de code | **Commande réglable par projet**, VS Code par défaut ; sous Windows via `cmd /c` | `code` y est un script `code.cmd`, introuvable sans le shell. |
+| Tests | **`dotnet test` en verbosité normale**, avec lecture des deux formats de totaux | Ce format donne les piles d'appels (emplacement de l'échec), mais pas la ligne de totaux habituelle : constaté en test. |
+| Graines des séries | **Convention `Seed`** sur les nœuds | L'éditeur reste générique, sans interface de plus pour le jeu. |
+| Bilan de partie | **`IGameReporter`** facultatif : fini, vainqueur, temps, mesures nommées | Le moteur agrège sans connaître le jeu ; le jeu choisit ce qui compte. |
+| Hot reload pendant une série | **Reporté** tant que la série tourne | La série utilise le module : le décharger en pleine partie la casserait. |
+
 ## Questions encore ouvertes
 
 1. **Audio** : FMOD (bindings BRUTAL, mais licence FMOD à payer et bibliothèques natives non fournies) ou SDL_mixer (choix du POC, gratuit, plus limité) ?

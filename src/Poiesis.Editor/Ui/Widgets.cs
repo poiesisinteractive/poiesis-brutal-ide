@@ -11,7 +11,7 @@ static class Widgets
 {
     static readonly Dictionary<string, ImInputString> TextBuffers = new();
 
-    public static ImColor8 Col(float4 c) => ImGui.GetColorU32(c);
+    public static ImColor8 Col(float4 c) => EditorTheme.Col(c);
 
     /// <summary>Champ texte lié à une chaîne. Rend vrai quand la saisie est validée (Entrée ou perte du focus).</summary>
     public static bool TextField(string label, string id, ref string value, int capacity = 256, ImGuiInputTextFlags flags = default)

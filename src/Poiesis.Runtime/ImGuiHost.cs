@@ -5,7 +5,7 @@ using Brutal.ImGuiApi.FreeType;
 using Brutal.VulkanApi;
 using Poiesis.Render.Vulkan;
 
-namespace Poiesis.Editor.Ui;
+namespace Poiesis.Runtime;
 
 /// <summary>
 /// Dear ImGui sur ses backends GLFW et Vulkan (ceux de BRUTAL), branche docking.

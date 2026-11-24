@@ -21,8 +21,11 @@ public sealed record ProjectConfig
     /// <summary>Projet de tests du jeu (garde-fou de l'IA), facultatif.</summary>
     public string? TestProject { get; init; }
 
-    /// <summary>Scène ouverte au démarrage, facultative.</summary>
+    /// <summary>Scène ouverte au démarrage dans l'éditeur, et jouée par le jeu exporté.</summary>
     public string? StartScene { get; init; }
+
+    /// <summary>Lignes de crédits du jeu, affichées dans le jeu exporté (avant celles de BRUTAL).</summary>
+    public IReadOnlyList<string> Credits { get; init; } = [];
 
     public string ContentRoot => Path.Combine(Root, "content");
 
@@ -44,6 +47,7 @@ public sealed record ProjectConfig
             GameAssembly = Req("gameAssembly"),
             TestProject = o["testProject"]?.GetValue<string>(),
             StartScene = o["startScene"]?.GetValue<string>(),
+            Credits = o["credits"] is JsonArray credits ? credits.Select(c => c!.GetValue<string>()).ToList() : [],
         };
     }
 

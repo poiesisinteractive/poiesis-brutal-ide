@@ -5,13 +5,13 @@ using Brutal.Numerics;
 using Brutal.VulkanApi;
 using Poiesis.Render.Vulkan;
 
-namespace Poiesis.Editor.Ui;
+namespace Poiesis.Runtime;
 
 /// <summary>
 /// Le logo BRUTAL, affiché au démarrage avant que l'éditeur ne soit utilisable (BRUTAL License v1.0, section 2.2 :
 /// non modifié sauf mise à l'échelle, lisible, aussi visible que les autres logos), et dans la fenêtre « À propos ».
 /// </summary>
-sealed class Splash : IDisposable
+public sealed class Splash : IDisposable
 {
     readonly Texture? _logo;
     readonly VkSampler _sampler;
@@ -75,7 +75,7 @@ sealed class Splash : IDisposable
         // Fond noir : le logo blanc doit rester lisible quel que soit le thème.
         var pos = ImGui.GetCursorScreenPos();
         var size = new float2(width, width * _logo.Size.Y / _logo.Size.X);
-        ImGui.GetWindowDrawList().AddRectFilled(pos - new float2(8, 8), pos + size + new float2(8, 8), Widgets.Col(new float4(0, 0, 0, 1)));
+        ImGui.GetWindowDrawList().AddRectFilled(pos - new float2(8, 8), pos + size + new float2(8, 8), EditorTheme.Col(new float4(0, 0, 0, 1)));
         ImGui.Image(_texture, size);
     }
 

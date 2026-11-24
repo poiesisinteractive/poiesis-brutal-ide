@@ -15,7 +15,9 @@
     <Project Path="src/Poiesis.Engine.Hosting/Poiesis.Engine.Hosting.csproj" />
     <Project Path="src/Poiesis.Engine.Scene/Poiesis.Engine.Scene.csproj" />
     <Project Path="src/Poiesis.Headless/Poiesis.Headless.csproj" />
+    <Project Path="src/Poiesis.Player/Poiesis.Player.csproj" />
     <Project Path="src/Poiesis.Render/Poiesis.Render.csproj" />
+    <Project Path="src/Poiesis.Runtime/Poiesis.Runtime.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Poiesis.AI.Tests/Poiesis.AI.Tests.csproj" />

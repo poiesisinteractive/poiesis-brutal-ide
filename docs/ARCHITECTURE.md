@@ -108,6 +108,23 @@ Règles pour le code du jeu, écrit à la main ou par l'IA : pas d'événement s
 - **`IWorldVisualizer`** (facultatif, côté jeu) : le jeu dessine dans un `DrawContext` des traits, des étiquettes et des lignes de HUD. Ses aides de débogage sont rangées par canaux que l'éditeur allume ou éteint. Le viewport ajoute les traits à son image, et projette les étiquettes et le HUD en surimpression.
 - **Inspecteur d'entités** : `IComponentStore.GetBoxed` et `SetBoxed`. L'éditeur modifie une copie boxée, structures imbriquées comprises, puis la réécrit.
 
+## Joueur, export et analyse (J2b)
+
+```text
+Poiesis.Runtime ── ImGuiHost · EditorTheme · Splash · WorldView · ViewportTextures
+   ▲        ▲
+   │        └── Poiesis.Player (exe) : game.json → GameModuleHost → PlaySession → WorldView, HUD, crédits
+   └─────────── Poiesis.Editor (exe) : ViewportPanel = WorldView + grille, gizmos, sélection
+Poiesis.Editor.Core ── Exporter (dotnet publish du joueur, DLL du jeu, contenu, zip)
+                    ── BuildService, TestService, CodeEditor (diagnostics et échecs → code --goto)
+Poiesis.Engine.Hosting ── Series (N graines, IGameReporter) ◄── Poiesis.Headless --runs, panneau Analyse
+```
+
+- **Export** : le joueur est publié en autonome pour la plateforme visée, puis son exécutable prend le nom du jeu. L'hôte .NET garde le chemin de sa DLL, on peut donc le renommer ; renommer l'assembly aurait aussi renommé les projets référencés. La DLL du jeu est compilée à part, sans le moteur, fourni par le joueur. `game.json` dit quoi charger et jouer.
+- **Obligations BRUTAL** dans le jeu exporté : logo au démarrage (splash), crédits (F1), `NOTICE.txt` livré. L'export échoue si `NOTICE.txt` manque.
+- **Séries** : `Series.SetSeed` change toute propriété entière `Seed` de la scène (convention, comme `Position` et `Heading`). Chaque partie tourne jusqu'à `Finished` ou une durée maximale. `SeriesResult` agrège les victoires et les mesures, et `Summary()` les met en texte pour l'IA.
+- **Analyse par l'IA** : une requête simple, sans outils, au fournisseur choisi dans le panneau IA. Elle contient les résultats, la question et toutes les données du jeu (`content/**/*.json` hors scènes), pour que les propositions désignent des fichiers et des champs. La réponse peut devenir une demande de feature, qui passe alors par le workflow habituel : branche, garde-fous, diff.
+
 ## Rendu (Poiesis.Render)
 
 - **`VulkanContext`** : instance, surface, device (GPU dédié de préférence, sinon intégré, sinon logiciel), file unique dessin et présentation, allocateur VMA, envois ponctuels (`Immediate`).

@@ -24,6 +24,26 @@ sealed class AiPanel(EditorSession session, ProjectConfig project, LogBuffer log
     State _state = State.Idle;
     int _provider;
     string _title = "";
+
+    /// <summary>Le fournisseur choisi, partagé avec le panneau Analyse.</summary>
+    public ProviderSettings Provider => ProviderSettings.Defaults[_provider];
+
+    public void SelectProvider(string name)
+    {
+        var i = ProviderSettings.Defaults.ToList().FindIndex(p => p.Name == name);
+        if (i >= 0)
+            _provider = i;
+    }
+
+    /// <summary>Prépare une demande de feature (depuis l'analyse) : titre et description pré-remplis, à relire avant de lancer.</summary>
+    public void Draft(string title, string description)
+    {
+        if (_state != State.Idle)
+            return;
+        _title = title;
+        _description.SetValue(description.Length > 8000 ? description[..8000] : description);
+        ImGui.SetWindowFocus("IA"u8);
+    }
     Task<FeatureProposal>? _task;
     CancellationTokenSource? _cts;
     FeatureProposal? _proposal;

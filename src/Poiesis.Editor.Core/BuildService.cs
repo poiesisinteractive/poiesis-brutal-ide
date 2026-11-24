@@ -36,7 +36,8 @@ public sealed partial class BuildService(ProjectConfig project, LogBuffer log)
             ? task.Result
             : new BuildResult(false, [], task.Exception?.InnerException?.Message ?? "échec", TimeSpan.Zero);
         foreach (var d in Last.Diagnostics)
-            log.Add(d.IsError ? LogLevel.Error : LogLevel.Warning, "build", $"{Path.GetFileName(d.File)}({d.Line},{d.Column}) {d.Code} : {d.Message}");
+            log.Add(d.IsError ? LogLevel.Error : LogLevel.Warning, "build", $"{Path.GetFileName(d.File)}({d.Line},{d.Column}) {d.Code} : {d.Message}",
+                new SourceLocation(d.File, d.Line, d.Column));
         if (Last.Succeeded)
             log.Info("build", $"Compilation réussie en {Last.Duration.TotalSeconds:0.0} s");
         else

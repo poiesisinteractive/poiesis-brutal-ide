@@ -4,7 +4,7 @@ using Poiesis.Engine.Scene;
 
 namespace Orionum.Game;
 
-public sealed class OrionumModule : IGameModule, IWorldVisualizer
+public sealed class OrionumModule : IGameModule, IWorldVisualizer, IGameReporter
 {
     Catalog _catalog = new();
     readonly Visuals _visuals = new();
@@ -34,4 +34,6 @@ public sealed class OrionumModule : IGameModule, IWorldVisualizer
     public IReadOnlyList<string> DebugChannels => _visuals.DebugChannels;
 
     public void Draw(World world, DrawContext ctx) => _visuals.Draw(world, ctx);
+
+    public GameReport Report(World world) => BattleReport.Build(world);
 }

@@ -1,7 +1,7 @@
 using Brutal.ImGuiApi;
 using Brutal.Numerics;
 
-namespace Poiesis.Editor.Ui;
+namespace Poiesis.Runtime;
 
 /// <summary>Thème sombre et sobre, accent violet (la couleur de l'Orionum).</summary>
 public static class EditorTheme
@@ -12,6 +12,8 @@ public static class EditorTheme
     public static readonly float4 Warning = new(1.00f, 0.78f, 0.30f, 1f);
     public static readonly float4 Error = new(1.00f, 0.40f, 0.40f, 1f);
     public static readonly float4 Muted = new(0.60f, 0.60f, 0.65f, 1f);
+
+    public static ImColor8 Col(float4 c) => ImGui.GetColorU32(c);
 
     public static void Apply()
     {

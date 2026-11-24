@@ -18,6 +18,9 @@ sealed class EditorApp : IDisposable
     readonly EditorSession _session;
     readonly LogBuffer _log = new();
     readonly BuildService _build;
+    readonly Exporter _exporter;
+    readonly CodeEditor _code;
+    readonly TestService _tests;
     readonly SceneRenderer _renderer;
     readonly ViewportPanel _viewport;
     readonly ScenePanel _scenePanel;
@@ -27,6 +30,7 @@ sealed class EditorApp : IDisposable
     readonly DataPanel _data;
     readonly AiPanel _ai;
     readonly DebugPanel _debug;
+    readonly AnalysisPanel _analysis;
     readonly PropertyEditor _properties;
     readonly Splash _splash;
     readonly Queue<string> _script;
@@ -47,17 +51,21 @@ sealed class EditorApp : IDisposable
         _session = new EditorSession(_project.Root);
         _session.Log += m => _log.Info("éditeur", m);
         _build = new BuildService(_project, _log);
+        _exporter = new Exporter(_project, _log);
+        _code = CodeEditor.Load(_project, _log);
+        _tests = new TestService(_project, _log);
 
         _renderer = new SceneRenderer(vk, Swapchain.FramesInFlight);
-        _viewport = new ViewportPanel(_session, _renderer, new VulkanBackendTextures(imgui.Renderer, _renderer));
+        _viewport = new ViewportPanel(_session, _renderer, new ViewportTextures(imgui.Renderer, _renderer));
         _scenePanel = new ScenePanel(_session);
         _properties = new PropertyEditor(_session, _project);
         _inspector = new InspectorPanel(_session, _properties);
-        _console = new ConsolePanel(_log);
+        _console = new ConsolePanel(_log, _code);
         _entities = new EntitiesPanel(_session);
         _data = new DataPanel(_project, _log, ReloadModule);
         _ai = new AiPanel(_session, _project, _log, () => { _reloadAfterBuild = true; _build.Start(); });
         _debug = new DebugPanel(_session, _log);
+        _analysis = new AnalysisPanel(_session, _project, _log, _ai);
         _viewport.DebugChannels = _debug.EnabledChannels;
         _splash = new Splash(vk, imgui.Renderer, options.SplashSeconds);
         _script = new Queue<string>(options.Script);
@@ -86,6 +94,12 @@ sealed class EditorApp : IDisposable
 
     void ReloadModule()
     {
+        if (_analysis is { IsRunning: true })
+        {
+            _log.Warn("éditeur", "Une série de parties utilise le module : rechargement reporté. Arrêtez la série ou attendez sa fin.");
+            _reloadAfterBuild = false;
+            return;
+        }
         var dll = _project.Abs(_project.GameAssembly);
         if (_session.Modules.Module is null)
             Try(() => _session.LoadGameModule(dll), "Chargement du module");
@@ -133,6 +147,8 @@ sealed class EditorApp : IDisposable
             _reloadAfterBuild = false;
         }
 
+        _exporter.TakeCompleted();
+        _tests.TakeCompleted();
         RunScript();
         CheckPreviousGeneration();
         _session.UpdatePreview();
@@ -152,6 +168,7 @@ sealed class EditorApp : IDisposable
         _data.Draw();
         _ai.Draw();
         _debug.Draw();
+        _analysis.Draw();
         if (_showAbout)
             About();
     }
@@ -202,6 +219,18 @@ sealed class EditorApp : IDisposable
                 BuildAndReload();
             if (ImGui.MenuItem("Recharger sans compiler"u8))
                 ReloadModule();
+            if (ImGui.MenuItem(_tests.IsRunning ? "Tests en cours…" : "Lancer les tests", "Ctrl+T"u8, false, _tests.Available && !_tests.IsRunning))
+                _tests.Start();
+            if (ImGui.MenuItem("Ouvrir le projet dans l'éditeur de code"u8))
+                _code.OpenProject();
+            ImGui.Separator();
+            if (ImGui.BeginMenu("Exporter le jeu"u8, !_exporter.IsExporting))
+            {
+                foreach (var target in Enum.GetValues<ExportTarget>())
+                    if (ImGui.MenuItem(Exporter.Label(target)))
+                        _exporter.Start(target);
+                ImGui.EndMenu();
+            }
             ImGui.Separator();
             if (ImGui.MenuItem("Jouer"u8, "F5"u8, false, _session.PlayState == PlayState.Editing))
                 Play();
@@ -227,7 +256,7 @@ sealed class EditorApp : IDisposable
         Toolbar();
 
         // À droite : état du build et du document.
-        var status = _build.IsBuilding ? "Compilation…" : _session.Modules.Module is { } m ? $"{m.Name} · génération {_session.Modules.Generation}" : "aucun module";
+        var status = _exporter.IsExporting ? "Export…" : _tests.IsRunning ? "Tests…" : _build.IsBuilding ? "Compilation…" : _session.Modules.Module is { } m ? $"{m.Name} · génération {_session.Modules.Generation}" : "aucun module";
         var doc = _session.ScenePath is { } p ? Path.GetFileName(p) + (_session.IsDirty ? " •" : "") : "(scène non enregistrée)";
         var text = $"{doc}    {status}";
         ImGui.SameLine(ImGui.GetWindowWidth() - ImGui.CalcTextSize(text).X - 16);
@@ -282,6 +311,8 @@ sealed class EditorApp : IDisposable
             if (ImGui.Shortcut(ImGuiKey.Mod_Ctrl | ImGuiKey.Y, ImGuiInputFlags.RouteGlobal))
                 _session.History.Redo();
         }
+        if (ImGui.Shortcut(ImGuiKey.Mod_Ctrl | ImGuiKey.T, ImGuiInputFlags.RouteGlobal) && _tests.Available && !_tests.IsRunning)
+            _tests.Start();
         if (ImGui.Shortcut(ImGuiKey.Mod_Ctrl | ImGuiKey.B, ImGuiInputFlags.RouteGlobal) && !_build.IsBuilding)
             BuildAndReload();
         if (ImGui.IsKeyPressed(ImGuiKey.F12, false))
@@ -351,6 +382,7 @@ sealed class EditorApp : IDisposable
         ImGui.Internal.DockBuilderDockWindow("Inspecteur"u8, right);
         ImGui.Internal.DockBuilderDockWindow("IA"u8, rightBottom);
         ImGui.Internal.DockBuilderDockWindow("Débogage"u8, rightBottom);
+        ImGui.Internal.DockBuilderDockWindow("Analyse"u8, rightBottom);
         ImGui.Internal.DockBuilderDockWindow("Console"u8, bottom);
         ImGui.Internal.DockBuilderDockWindow("Entités"u8, bottom);
         ImGui.Internal.DockBuilderDockWindow("Données"u8, bottom);
@@ -402,6 +434,15 @@ sealed class EditorApp : IDisposable
                 case "speed": _speed = float.Parse(arg, System.Globalization.CultureInfo.InvariantCulture); break;
                 case "about": _showAbout = true; break;
                 case "build": BuildAndReload(); break;
+                case "tests": _tests.Start(arg.Length > 0 ? arg : null); break;
+                case "series": _analysis.ScriptStart(int.Parse(arg)); break;
+                case "ask": _analysis.ScriptAsk(arg); break;
+                case "provider": _ai.SelectProvider(arg); break;
+                case "open-first-location":
+                    if (_log.Snapshot().FirstOrDefault(e => e.Location is not null)?.Location is { } loc)
+                        _code.Open(loc);
+                    break;
+                case "export": _exporter.Start(arg == "windows" ? ExportTarget.WindowsX64 : ExportTarget.LinuxX64); break;
                 case "wait": _scriptWait = int.Parse(arg); return;
                 case "focus": ImGui.SetWindowFocus(arg); break;
                 default: _log.Warn("script", $"Commande inconnue : {cmd}"); break;

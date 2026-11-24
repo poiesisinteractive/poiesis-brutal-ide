@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Ce que l'éditeur et le joueur ont en commun : fenêtre ImGui sur Vulkan, thème, splash BRUTAL,
+       et la vue 3D d'un monde (caméra, entités, dessins du jeu, HUD). -->
+  <PropertyGroup>
+    <RootNamespace>Poiesis.Runtime</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Poiesis.Engine.Hosting\Poiesis.Engine.Hosting.csproj" />
+    <ProjectReference Include="..\Poiesis.Render\Poiesis.Render.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Ahwoo.Brutal.Glfw" />
+    <PackageReference Include="Ahwoo.Brutal.ImGui" />
+    <PackageReference Include="Ahwoo.Brutal.ImGui.Backends" />
+    <PackageReference Include="Ahwoo.Brutal.ImGui.Extensions" />
+    <PackageReference Include="Ahwoo.Brutal.ImGui.FreeType" />
+  </ItemGroup>
+
+  <!-- Logo BRUTAL (splash, crédits) et NOTICE.txt : obligations de la BRUTAL License v1.0, sections 2.2 et 2.3.
+       Copiés à côté de l'exécutable de tout projet qui référence cette bibliothèque. -->
+  <ItemGroup>
+    <None Include="Assets\**" CopyToOutputDirectory="PreserveNewest" LinkBase="Assets" />
+    <None Include="Assets\BRUTAL-NOTICE.txt" CopyToOutputDirectory="PreserveNewest" Link="NOTICE.txt" />
+  </ItemGroup>
+
+</Project>

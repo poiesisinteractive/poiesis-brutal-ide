@@ -102,13 +102,29 @@ Volontairement hors du J2a :
 - la gravité et les collisions des astres (décor seulement) ;
 - l'équilibrage : la Coalition l'emporte le plus souvent, à vérifier avec l'analyse IA du J2b.
 
-## J2b : sortir le jeu de l'éditeur
+## J2b : sortir le jeu de l'éditeur ✅
 
 Critère : *un joueur lance Orionum exporté, sans l'éditeur ; une erreur de build s'ouvre dans VS Code à la bonne ligne ; l'IA explique pourquoi les Clans gagnent 70 % des batailles.*
 
 - Erreurs de build cliquables, ouvertes dans VS Code (`code --goto`), ouverture du projet C#, tests du jeu lancés depuis l'éditeur.
 - Export Windows autonome : exécutable hôte, DLL du jeu, contenu, splash et `NOTICE.txt` BRUTAL.
 - IA qui analyse une partie ou une série en headless : équilibrage, bugs, performances.
+
+### Bilan du J2b
+
+| Élément | État |
+| --- | --- |
+| **Joueur** (`Poiesis.Player`) : charge `game.json`, splash BRUTAL, scène de départ, caméra, pause, vitesse, HUD du jeu, crédits (F1) | ✅ |
+| **Bibliothèque commune** (`Poiesis.Runtime`) : hôte ImGui, thème, splash, `WorldView` (caméra, entités, dessins du jeu, sélection), partagée par l'éditeur et le joueur | ✅ |
+| **Export** Windows x64 et Linux x64 depuis l'éditeur (Jeu > Exporter) : publication autonome, DLL du jeu, contenu, manifeste, `NOTICE.txt`, zip | ✅ testé : export Windows produit depuis Linux (43 Mo zippés) ; export Linux lancé hors du dépôt, sans SDK, sous Xvfb |
+| **VS Code** : erreurs de build et tests en échec cliquables dans la console (`code --goto`), ouverture du projet, commande réglable par projet | ✅ vérifié avec une erreur et un test en échec réels, et un faux `code` qui note ses appels |
+| **Tests du jeu** depuis l'éditeur (Ctrl+T) : totaux, échecs avec message et emplacement ; erreurs de compilation si les tests ne compilent pas | ✅ |
+| **Bilan de partie** (`IGameReporter`) et **séries** (`Series`, `Poiesis.Headless --runs`) : victoires, durées, mesures du jeu sur N graines | ✅ |
+| **Panneau Analyse** : série en arrière-plan, question à l'IA avec les résultats et les données du jeu, réponse convertible en feature | ✅ vérifié avec un serveur local simulé ; pas d'appel réel faute de clé |
+
+**Premier constat de l'analyse** : sur 20 graines, la Coalition gagne 100 % des batailles des capitaux, en 415 s environ, et finit avec 6 coques à 96 %. L'équilibrage est le premier travail à confier au workflow « analyse puis feature ».
+
+À vérifier sur Windows : lancement du `Orionum.exe` exporté (sans console), Segoe UI, pilote Vulkan réel.
 
 ## J3 : modèles, contenu et réutilisation
 
