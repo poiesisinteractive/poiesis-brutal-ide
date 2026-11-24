@@ -603,6 +603,8 @@ sealed class EditorApp : IDisposable
                     _waitReview = true;
                     return;
                 case "accept": _ai.ScriptFinish(accept: true); break;
+                case "capture": _requestCapture(Path.GetFullPath(arg)); break;
+                case "exit": QuitRequested = true; break;
                 case "open-first-location":
                     if (_log.Snapshot().FirstOrDefault(e => e.Location is not null)?.Location is { } loc)
                         _code.Open(loc);
