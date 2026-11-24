@@ -123,6 +123,21 @@ Poiesis Brutal IDE est un éditeur de jeux à la manière de Godot ou Unity, con
 | Nom de l'API d'extension | **`Poiesis.Editor.Api`**, référencée par `Poiesis.Engine.Hosting` | Tous les hôtes (éditeur, headless, joueur) doivent pouvoir charger les types du jeu, même sans éditeur. |
 | Nouveaux panneaux dans une ancienne disposition | **Ancrés à côté d'un voisin** à leur première apparition | Sinon ImGui les ouvre flottants et minuscules (constaté avec un `imgui.ini` d'avant le J3a). |
 
+## Choix faits pendant le J3b (2026-11-24)
+
+| Sujet | Choix | Pourquoi |
+| --- | --- | --- |
+| Maillages propres au jeu | **Fabriqués par le jeu, rendus par le moteur** (`MeshLibrary` dans le monde, `Renderable.Asset`) | Le rendu reste générique ; un jeu peut générer, importer ou mêler les deux. |
+| Libération des maillages | **Après 120 images sans usage**, puis après les images en vol | Le concepteur régénère la coque à chaque réglage : sans libération, la mémoire GPU grossirait à chaque glissement. |
+| Textures | **Une texture de couleur par maillage**, blanche par défaut, teintée par la couleur de l'instance | Le minimum utile pour les modèles importés et le blindage des coques ; matériaux complets (normales, métal) plus tard. |
+| Format des modèles | **glTF 2.0** ; textures PNG, JPEG ou **KTX2 Basis** ; l'export écrit du KTX2 Basis | glTF est le format d'échange courant ; KTX2 Basis est compact et se transcode vers tout GPU. |
+| Coque générée | **Paramètres sans unité** (fractions de la longueur) dans le JSON de la classe | Changer la longueur d'une classe garde sa silhouette ; le diff d'une coque se lit. |
+| Tourelles et coque | **Posées à la demande** (« Poser les tourelles sur la coque »), pas à chaque changement | Les emplacements sont des données de gameplay : on ne les déplace pas sans le dire. |
+| Aperçus et vignettes | **Rendus hors écran à part** (un rendu pour l'aperçu, un pour les vignettes) | Le viewport n'est jamais dérangé ; les vignettes se relisent sans attendre l'image suivante. |
+| Cache des vignettes | **Sur disque, par clé** (fichier, date, génération du module) | Rouvrir le projet ne refait pas toutes les vignettes ; recharger le jeu refait celles qu'il dessine. |
+| L'IA et les outils d'éditeur | **L'agent reçoit un résumé de l'API, vérifié par un test**, et lit les extensions existantes | Le résumé évite qu'il invente l'API ; le test l'oblige à suivre ses évolutions. |
+| Réglages des extensions | **Texte, dans `.poiesis/extensions.json`** | Ils survivent aux rechargements sans retenir de type du jeu. |
+
 ## Questions encore ouvertes
 
 1. **Audio** : FMOD (bindings BRUTAL, mais licence FMOD à payer et bibliothèques natives non fournies) ou SDL_mixer (choix du POC, gratuit, plus limité) ?

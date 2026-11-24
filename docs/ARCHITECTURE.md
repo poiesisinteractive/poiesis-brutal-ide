@@ -166,6 +166,25 @@ Poiesis.Editor : ExtensionHost ── trouve les IEditorExtension au chargement 
 - **Erreurs** : une extension qui lève une exception est coupée jusqu'au prochain rechargement, et la console dit laquelle.
 - **Livraison** : le jeu exporté référence l'API ; le joueur la livre, sans s'en servir. Les bibliothèques natives d'ImGui ne sont pas copiées à côté du jeu.
 
+## Contenu 3D et outils de contenu (J3b)
+
+```text
+Poiesis.Engine.Core    MeshData · TextureData · MeshAsset · MeshLibrary (ressource du monde) · Renderable.Asset
+Poiesis.Engine.Assets  ModelImporter (glTF → MeshData, meshoptimizer, PNG/JPEG/KTX2) · ModelExporter (.glb, KTX2 Basis)
+Poiesis.Render         SceneRenderer : UV, une texture par maillage (blanche par défaut), ReleaseMesh différé, RenderToPixels
+Poiesis.Runtime        WorldView : téléverse les maillages du jeu à la première utilisation, libère après 120 images sans usage
+Poiesis.Editor         PreviewView (View3D des extensions) · ThumbnailService (vignettes) · ContentPanel en vignettes
+Orionum                HullDesign · HullGenerator · Catalog.ShipMesh · HullDesigner (extension)
+```
+
+- **Maillages du jeu** : le jeu les fabrique (générateur) ou les importe (glTF), les range dans une `MeshLibrary` qu'il installe dans chaque monde, et les désigne par numéro dans `Renderable.Asset`. Le rendu ne connaît que des `MeshAsset`, sans type du jeu : rien ne retient l'assembly au rechargement. Un maillage régénéré est un nouvel objet, téléversé à son tour ; l'ancien est libéré quand plus personne ne le dessine, après les images en vol.
+- **Forme et taille** : le maillage est ramené au cube unité en gardant son origine au centre (`NormalizeToUnitBox(keepOrigin)`), et `Renderable.Size` lui rend sa taille en mètres. L'origine du vaisseau reste celle du maillage, donc les tourelles, placées par rapport à elle, tombent sur la coque.
+- **Import glTF** : la scène du fichier, nœuds et transformations compris, est fusionnée en un maillage ; meshoptimizer réordonne triangles et sommets ; la texture de couleur de base est décodée en RGBA. Une texture KTX2 intégrée au `.glb` est transcodée par libktx (le chargeur de Brutal.Texture ne transcode qu'à la lecture d'un fichier). Une seule texture par modèle pour l'instant.
+- **Concepteur de coques** : `HullDesign` (champ `design` d'un `*.ship.json`, dimensions en fractions de la longueur) → `HullGenerator` : sections octogonales lissées en facettes, proue, superstructures, tuyères, quille, coordonnées de texture par projection sur la face, texture de blindage procédurale. `HullProfile` donne demi-largeur et demi-hauteur le long de l'axe, pour poser les tourelles (`SnapHardpoints`). Le panneau écrit `design` et les emplacements des tourelles dans le JSON, puis demande un rechargement (`RequestReload`), jamais pendant son propre code.
+- **Aperçu 3D** (`IEditorContext.View3D`) : un second rendu hors écran, une caméra orbitale, un aperçu par image. Le monde fourni par l'extension n'est gardé que jusqu'au rendu de l'image.
+- **Vignettes** : un troisième rendu, 192 × 192, relu (`RenderToPixels`) et enregistré en PNG dans `.poiesis/thumbnails/`, sous une clé faite du fichier, de sa date et de la génération du module. Les scènes sont cuites avec le module ; les modèles importés ; le reste est demandé au jeu (`EditorRegistry.Thumbnail("*.ship.json", …)`). Une vignette par image au plus.
+- **IA et outils d'éditeur** : le contexte de l'agent contient `EditorApiReference.Summary` et la liste des extensions existantes ; un test vérifie que ce résumé cite chaque membre public de l'API. Le prompt système dit qu'un outil d'éditeur est une extension du jeu, jamais un changement de `src/Poiesis.*`.
+
 ## Rendu (Poiesis.Render)
 
 - **`VulkanContext`** : instance, surface, device (GPU dédié de préférence, sinon intégré, sinon logiciel), file unique dessin et présentation, allocateur VMA, envois ponctuels (`Immediate`).

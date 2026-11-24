@@ -150,15 +150,24 @@ Critère : *la ligne de la Coalition est une scène, instanciée dans les deux s
 
 Reporté au J3b : vignettes rendues hors écran dans le navigateur, filtres.
 
-## J3b : le contenu
+## J3b : le contenu ✅
 
-Jeu :
-- **concepteur de coques**, extension d'Orionum : générateur paramétré (proues, superstructures, placement des tourelles) ;
-- import glTF (Brutal.Gltf, MeshOptimizer) et textures KTX2 en alternative.
+Critère du J3 atteint : *le croiseur de la Coalition est conçu dans le concepteur de coques d'Orionum ; sa ligne de bataille est une flotte type, instanciée dans les deux scénarios avec des surcharges ; on retrouve tout dans le navigateur de contenu, en vignettes.*
 
-Éditeur :
-- **vignettes** rendues hors écran dans le navigateur de contenu ;
-- **IA qui écrit des outils d'éditeur** : une extension générée dans la DLL du jeu, par le workflow feature, avec l'API d'extension dans son contexte.
+| Élément | État |
+| --- | --- |
+| **Maillages du jeu** : `MeshData` et `MeshLibrary` dans le moteur, `Renderable.Asset` ; le rendu téléverse à la première utilisation et libère ce qui ne sert plus ; coordonnées de texture et texture de couleur par maillage | ✅ |
+| **Import glTF** (`Poiesis.Engine.Assets`) : scène fusionnée, normales, UV, indices ; meshoptimizer (cache et lecture des sommets) ; texture PNG, JPEG ou KTX2 Basis (transcodée en RGBA) ; **export** `.glb` avec texture KTX2 Basis | ✅ aller-retour testé ; la frégate des Clans est un modèle importé |
+| **Concepteur de coques** (extension d'Orionum, au centre) : proues effilée, en lame, massive ou fourchue ; segments et pincement ; superstructures en étages ; tuyères ; quille ; texture de blindage ; aperçu 3D avec les tourelles ; pose des tourelles sur la coque ; enregistrer et recharger ; exporter en glTF | ✅ le croiseur de la Coalition |
+| **Aperçu 3D pour les extensions** (`View3D`) et **vignettes** du navigateur de contenu (scènes, modèles, et fichiers que le jeu sait montrer), rendues hors écran et gardées sur disque | ✅ |
+| **IA qui écrit des outils d'éditeur** : l'API d'extension (résumé tenu à jour par un test) et les extensions existantes dans le contexte de l'agent, modèle de demande dans le panneau IA | ✅ vérifié de bout en bout avec un agent simulé : extension écrite, garde-fous passés, acceptée, rechargée |
+| API d'extension complétée : placement des panneaux, vignettes, aperçu 3D, réglages persistants, demande de rechargement | ✅ |
+
+**Ce que le parcours de l'IA a montré** : au premier essai, les garde-fous ont refusé l'outil écrit par l'agent, parce qu'un test exigeait la liste exacte des extensions d'Orionum. Le test a été assoupli ; le second essai est passé du premier coup.
+
+**Effet sur la bataille** : poser les tourelles du croiseur sur sa nouvelle coque déplace ses bordées de 70 m à 53,5 m de l'axe. Sur 20 graines, rien ne change : la Coalition gagne toujours 100 % des batailles, en 414 s (415 avant), avec 6 survivants à 96 %. Le déséquilibre reste à traiter.
+
+À vérifier sur Windows : rendu des textures, libktx et meshoptimizer natifs dans le jeu exporté.
 
 ## J4 : effets, son, UI de jeu, et édition de scène avancée
 

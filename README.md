@@ -12,7 +12,15 @@ BRUTAL fournit l'interop, la mémoire, les maths, les jobs et les bindings natif
 
 ## État
 
-Jalon 3a terminé, 54 tests passent. On peut :
+Jalon 3b terminé, 61 tests passent. Le jalon 3 (modèles, contenu, réutilisation) est complet. On peut :
+- **concevoir une coque** dans le concepteur d'Orionum, une extension du jeu : proue, segments, superstructures, tuyères et quille, avec un aperçu 3D. Les tourelles se posent sur la coque, puis on enregistre dans la classe de vaisseau (le jeu est rechargé) ou on exporte en glTF ;
+- **importer des modèles glTF** (`.glb`, `.gltf`), optimisés par meshoptimizer, avec leur texture en PNG, JPEG ou KTX2 (Basis Universal). Une classe de vaisseau les désigne par `"model": "models/….glb"` ;
+- voir le contenu en **vignettes** rendues hors écran : scènes, modèles, et classes de vaisseaux (le jeu fournit leur vignette) ;
+- demander à l'IA un **outil d'éditeur** : elle écrit une extension dans la DLL du jeu, que l'on relit, accepte, et qui se recharge à chaud.
+
+![Le concepteur de coques (au centre) et les vignettes des classes de vaisseaux (à gauche)](docs/images/hull-designer.png)
+
+Au jalon 3a :
 - **réutiliser des scènes**, à la Godot : une flotte type ou un système stellaire s'instancie dans plusieurs scénarios, chaque instance ne gardant que ses différences (surcharges) ;
 - faire d'une branche de la scène une scène réutilisable (clic droit > Enregistrer comme scène) ;
 - **copier-coller** des nœuds, d'une scène à l'autre ;
@@ -90,6 +98,9 @@ Le dossier passé en argument est un projet de jeu : il contient un `poiesis.pro
 | Rétablir une surcharge | clic droit sur la valeur (en couleur) dans l'inspecteur |
 | Déplacer un fichier de contenu | le glisser sur un dossier du panneau Contenu (références mises à jour) |
 | Outils du jeu | menu Outils, et les panneaux et gizmos fournis par le jeu |
+| Vignettes du contenu | bouton « Vignettes » du panneau Contenu (et bulle au survol d'un fichier) |
+| Concevoir une coque | onglet « Concepteur de coques », à côté du viewport : choisir la classe, régler, « Poser les tourelles sur la coque », « Enregistrer et recharger » |
+| Demander un outil d'éditeur à l'IA | panneau IA > « Modèle : outil d'éditeur », compléter, Lancer |
 
 L'éditeur de code se règle dans `<projet>/.poiesis/settings.json` (VS Code par défaut) :
 
@@ -134,7 +145,7 @@ dotnet run --project src/Poiesis.Headless -c Release -- games/Orionum/src/Orionu
 
 ### Vérifier l'éditeur sans écran
 
-L'éditeur tourne aussi sans GPU, avec le Vulkan logiciel de Mesa (lavapipe), et sans écran, sous Xvfb. C'est ainsi qu'il est vérifié dans le cloud et qu'il pourra l'être en CI. `--capture` enregistre une image puis quitte. `--do` joue un petit script : `select:<nom>`, `frame`, `play`, `pause`, `step:<n>`, `advance:<secondes>`, `snapshot`, `restore`, `entity:<slot ou nom de flotte>`, `channel:<canal>`, `about`, `build`, `wait:<images>`, `focus:<panneau>`, `open:<scène>`, `save`, `copy`, `paste`, `instantiate:<scène>`, `move:<de>><vers>`, `set:<Propriété>=<json>`, `tool:<commande>`, `tests[:filtre]`, `open-first-location`, `export:<windows|linux>`, `series:<n>`, `provider:<nom>`, `ask:<question>`.
+L'éditeur tourne aussi sans GPU, avec le Vulkan logiciel de Mesa (lavapipe), et sans écran, sous Xvfb. C'est ainsi qu'il est vérifié dans le cloud et qu'il pourra l'être en CI. `--capture` enregistre une image puis quitte. `--do` joue un petit script : `select:<nom>`, `frame`, `play`, `pause`, `step:<n>`, `advance:<secondes>`, `snapshot`, `restore`, `entity:<slot ou nom de flotte>`, `channel:<canal>`, `about`, `build`, `wait:<images>`, `focus:<panneau>`, `open:<scène>`, `save`, `copy`, `paste`, `instantiate:<scène>`, `move:<de>><vers>`, `set:<Propriété>=<json>`, `tool:<commande>`, `grid`, `content-select:<chemin>`, `feature:<titre>|<description>`, `wait-review`, `accept`, `capture:<png>`, `exit`, `tests[:filtre]`, `open-first-location`, `export:<windows|linux>`, `series:<n>`, `provider:<nom>`, `ask:<question>`.
 
 ```sh
 sudo apt-get install -y xvfb mesa-vulkan-drivers libvulkan1
